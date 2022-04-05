@@ -3,15 +3,6 @@
 from typing import Sequence
 from functools import cmp_to_key
 
-class Pipelines:
-
-	def __init__(self, sequence: int):
-		self.seq = sequence
-		self.demand = []
-
-	def append(self, demand: float):
-		self.demand.append(demand)
-
 class DPF:
 
 	def __init__(self, eps_Global: float=5.0, first_NPL=5):
@@ -31,15 +22,18 @@ class DPF:
 		self.eps_C.append(0)
 		self.NPB += 1
 
-	def OnPipelineArrival(self, pl: Pipelines) -> None:
-		d_i = pl.demand
+	def OnPipelineArrival(self, pl: list[float]) -> None:
 		for j in range(self.NPB):
-			if d_i[j] > 0:
+			if pl[j] > 0:
 				self.eps_U[j] = min(self.eps_G[j] - self.eps_C[j], self.eps_U[j] + self.eps_G[j] / self.first_NPL)
 
-	def cmp_DominantShare(self, pl1: Pipelines, pl2: Pipelines):
-		ds1 = self.DominantShare(pl1.demand)
-		ds2 = self.DominantShare(pl2.demand)
+	# def cmp_DominantShare(self, pl1: list[float], pl2: list[float]):
+	def cmp_DominantShare(self, _pl1, _pl2):
+		print(type(_pl1))
+		pl1 = _pl1.get()
+		pl2 = _pl2.get()
+		ds1 = self.DominantShare(pl1)
+		ds2 = self.DominantShare(pl2)
 		if ds1 < ds2:
 			return -1
 		elif ds1 > ds2:
@@ -47,12 +41,14 @@ class DPF:
 		else:
 			return 0
 
-	def OnSchedulerTimer(self, wp: list[Pipelines]) -> None:
-		sorted_pipelines = sorted(wp, key=cmp_to_key(self.cmp_DominantShare))
+	def OnSchedulerTimer(self, wp: dict[int, list[float]]) -> None:
+		# sorted_pipelines = sorted(wp, key=cmp_to_key(self.cmp_DominantShare)) # list[tuple]
+		sorted_pipelines = sorted(wp, key=lambda x: self.DominantShare(wp.get(x)))
 		i = 0
-		pop_list = []
 		while i < len(sorted_pipelines):
-			d_i = sorted_pipelines[i].demand
+			seq = sorted_pipelines[i]
+			d_i = wp.get(seq)
+			assert(d_i != None)
 			if(self.CanRun(d_i)):
 				self.Allocate(d_i)
 				# Run task i
@@ -61,22 +57,16 @@ class DPF:
 					for j in range(self.NPB):
 						self.eps_C[j] += d_i[j]
 						self.eps_A[j] -= d_i[j]
-					seq = sorted_pipelines[i].seq
 					assert(seq not in self.finish_pls_no)
+					wp.pop(seq)
 					self.finish_pls_no.append(seq)
-					pop_list.append(seq)
-					sorted_pipelines.pop(i)
-					i -= 1
 				else:
 					for j in range(self.NPB):
 						self.eps_U[j] += d_i[j]
 						self.eps_A[j] -= d_i[j]
 			i += 1
-		for item in wp:
-			if item.seq in pop_list:
-				wp.remove(item)
 
-	def DominantShare(self, d_i: Sequence[float]) -> float:
+	def DominantShare(self, d_i) -> float:
 		max_share = 0
 		for j in range(self.NPB):
 			if d_i[j] > 0:
@@ -103,12 +93,10 @@ def Simulation(eps_Global: float, first_NPL: int, NPB: int, pls: list[list[float
 	for _ in range(NPB):
 		dpf.OnDataBlockCreation()
 	
-	wp = [] # waiting pipelines
+	wp = {} # waiting pipelines
 	for i in range(len(pls)):
-		pl = Pipelines(i)
-		pl.demand = pls[i]
-		dpf.OnPipelineArrival(pl)
-		wp.append(pl)
+		wp[i] = pls[i]
+		dpf.OnPipelineArrival(pls[i])
 		dpf.OnSchedulerTimer(wp)
 
 	return dpf.finish_pls_no
