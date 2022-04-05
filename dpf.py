@@ -42,7 +42,6 @@ class DPF:
 			return 0
 
 	def OnSchedulerTimer(self, wp: dict[int, list[float]]) -> None:
-		# sorted_pipelines = sorted(wp, key=cmp_to_key(self.cmp_DominantShare)) # list[tuple]
 		sorted_pipelines = sorted(wp, key=lambda x: self.DominantShare(wp.get(x)))
 		i = 0
 		while i < len(sorted_pipelines):
