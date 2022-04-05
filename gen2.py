@@ -1,54 +1,50 @@
 #!/bin/python
-
 # vim:ts=2:sw=2:noet
-from random import randrange, uniform
+from random import randrange
 import numpy as np
 
-def generate_pls(
-	eps_mice: float=0.5,
-	eps_elep: float=3.0,
-	eps_corr: float=5.0,
-	n_mice: int=80,
-	n_elep: int=20,
-	n_corr: int=5 ,
-	n_prvblck: int=5,
-):
+def generate_normal_pls( eps_mice: float, eps_elep: float, n_mice: int, n_elep: int, n_prvblck: int):
 	pls = []
-	total_n_pls = n_mice + n_elep + n_corr
+	total_n_pls = n_mice + n_elep
 
 	for i in range(total_n_pls):
 		remain_pls = total_n_pls - i
 		rnd = randrange(0, remain_pls)
 		eps_total = 0
 
-		if i == 0:
-			eps_total = eps_corr
-			n_corr -= 1
+		if rnd < n_mice:
+			eps_total = eps_mice
+			n_mice -= 1
 		else:
-			if rnd < n_mice:
-				eps_total = eps_mice
-				n_mice -= 1
-			elif rnd < n_mice + n_elep:
-				eps_total = eps_elep
-				n_elep -= 1
-			else:
-				eps_total = eps_corr
-				n_corr -= 1
+			eps_total = eps_elep
+			n_elep -= 1
 
 		step = eps_total / 100
 		pl = []
-		for _ in range(n_prvblck-1):
+		for _ in range(n_prvblck):
 			values = np.arange(eps_total-step*25, eps_total+step*25, step=step)
 			if values.size == 0:
 				demand = 0
 			else:
 				demand = np.random.choice(values)
-			# eps_total -= demand
 			pl.append(demand)
-		pl.append(eps_total)
-
 		pls.append(pl)
 
+	return pls
+
+def generate_poison_pls(eps_corr: float, n_corr: int, n_prvblck: int) -> list:
+	pls = []
+	for _ in range(n_corr):
+		step = eps_corr / 100
+		pl = []
+		for _ in range(n_prvblck):
+			values = np.arange(eps_corr-step*25, eps_corr+step*25, step=step)
+			if values.size == 0:
+				demand = 0
+			else:
+				demand = np.random.choice(values)
+			pl.append(demand)
+		pls.append(pl)
 	return pls
 
 def print_pls(
@@ -60,11 +56,12 @@ def print_pls(
 	n_corr: int=5 ,
 	n_prvblck: int=5,
 ):
-	pls = generate_pls(
-		eps_mice,	eps_elep,	eps_corr,
-		n_mice,		n_elep, 	n_corr,
-		n_prvblck,
-	)
+	pls = generate_poison_pls(eps_corr, n_corr, n_prvblck)
+	for item in pls:
+		for item2 in item:
+			print('%.4f'%item2, end=" ")
+		print()
+	pls = generate_normal_pls(eps_mice,	eps_elep,	n_mice,	n_elep,	n_prvblck)
 	for item in pls:
 		for item2 in item:
 			print('%.4f'%item2, end=" ")
