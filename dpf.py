@@ -62,6 +62,7 @@ class DPF:
 						self.eps_C[j] += d_i[j]
 						self.eps_A[j] -= d_i[j]
 					seq = sorted_pipelines[i].seq
+					assert(seq not in self.finish_pls_no)
 					self.finish_pls_no.append(seq)
 					pop_list.append(seq)
 					sorted_pipelines.pop(i)
@@ -97,13 +98,13 @@ class DPF:
 			self.eps_U[j] -= d_i[j]
 			self.eps_A[j] += d_i[j]
 
-def Simulation(eps_Global: float, first_NPL: int, NPB: int, NPL: int, pls: list[list[float]]) -> list[int]:
+def Simulation(eps_Global: float, first_NPL: int, NPB: int, pls: list[list[float]]) -> list[int]:
 	dpf = DPF(eps_Global=eps_Global, first_NPL=first_NPL)
 	for _ in range(NPB):
 		dpf.OnDataBlockCreation()
 	
 	wp = [] # waiting pipelines
-	for i in range(NPL):
+	for i in range(len(pls)):
 		pl = Pipelines(i)
 		pl.demand = pls[i]
 		dpf.OnPipelineArrival(pl)

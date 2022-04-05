@@ -1,5 +1,7 @@
 #!/bin/python
 # vim:ts=2:sw=2:noet
+from dpf import Simulation
+
 def overstep(pl: list, step: float) -> bool:
 	for demand in pl:
 		if demand > step:
@@ -18,46 +20,74 @@ def divide_pl(pl: list, step: float) -> tuple:
 		pl[i] -= tmp
 	return pl, new_pl
 
-def attack(pls: list, attack_no: int=1, step: float=1.0) -> tuple:
+def gen_div_poison_pls(pl: list, step: float) -> list:
+	pls = []
+	while True:
+		new_pl = []
+		for i in range(len(pl)):
+			new_pl.append( min(pl[i], step) )
+			pl[i] -= min(pl[i], step)
+		if sum(new_pl) == 0:
+			break
+		pls.append(new_pl)
+	return pls
 
-	max_pl_no = 0
-	if attack_no == 1:
-		max_pl_no = 0
-	else:
-		assert(attack_no == 1)
-	
-	poison_pl = pls[max_pl_no]
-	poison_pls_no = []
-	while overstep(poison_pl, step):
-		poison_pl, new_pl = divide_pl(poison_pl, step)
-		pls.insert(max_pl_no, new_pl)
-		poison_pls_no.append(max_pl_no)
-		max_pl_no += 1
+def insert_top(pls: list, poison_pls: list) -> tuple:
+	return poison_pls + pls, list(range(len(poison_pls)))
 
-	if sum(poison_pl) == 0:
-		pls.pop(max_pl_no)
-	else:
-		pls[max_pl_no] = poison_pl
-		poison_pls_no.append(max_pl_no)
+# def yield_attack(pls: list, poison_pls: list, step_sys: float) -> tuple:
+def yield_attack(
+	poison_pls,
+	sim_arg: tuple[float, int, int, list[list[float]]],
+):
+	eps_Global, first_NPL, NPB, pls = sim_arg
+	finish_pls_no = Simulation(eps_Global, first_NPL, NPB, pls)
+	print(finish_pls_no)
+	# assert(0)
+	return [], []
 
-	return pls, poison_pls_no
+# def attack(pls: list, step_div: float, step_sys: float, poison_pls_no: list=[0]) -> tuple:
+def attack(
+	step_div: float, 
+	poison_pls_no: list, 
+	sim_arg: tuple[float, int, int, list[list[float]]],
+):
+	# TODO: multiple pipelines
+	assert(len(poison_pls_no) == 1)
 
-eps_Global	= float(input())
-first_N		= int(input())
-n_prvblck	= int(input())
-n_pls		= int(input())
+	eps_Global, first_NPL, NPB, pls = sim_arg
+
+	# generate divided poisoned pipelines
+	poison_pls = []
+	for i in poison_pls_no:
+		poison_pls += gen_div_poison_pls(pls[i], step_div)
+	# pop up poisoned pipelines from origin pls
+	poison_pls_no.sort()
+	for i in range(len(poison_pls_no), 0, -1):
+		pls.pop(poison_pls_no[i-1])
+
+	# attack
+	sim_arg = (eps_Global, first_NPL, NPB, pls)
+	return yield_attack(poison_pls, sim_arg)
+	# return insert_top(pls, poison_pls)
+
+eps_Global= float(input())
+first_NPL	= int(input())
+NPB	= int(input())
+NPL	= int(input())
 
 pls = []
-for _ in range(n_pls):
+for _ in range(NPL):
 	line = input()
 	pls.append([float(i) for i in line.split()])
 
 step = float(input())
-pls, poison_pls_no = attack(pls, step=step)
+sim_arg = (eps_Global, first_NPL, NPB, pls)
+pls, poison_pls_no = attack(step_div=step, poison_pls_no=[0], sim_arg=sim_arg)
 
 print(eps_Global)
-print(first_N)
-print(n_prvblck)
+print(first_NPL)
+print(NPB)
 print(len(pls))
 for item in pls:
 	for item2 in item:

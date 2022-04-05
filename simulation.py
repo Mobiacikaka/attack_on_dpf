@@ -12,4 +12,4 @@ for _ in range(NPL):
 	line = input()
 	pls.append([float(item) for item in line.split()])
 
-Simulation(eps_Global, first_NPL, NPB, NPL, pls)
+Simulation(eps_Global, first_NPL, NPB, pls)
