@@ -22,9 +22,9 @@ class DPF:
 		self.eps_U = [] # unlocked budget
 		self.eps_A = [] # allocated budget
 		self.eps_C = [] # consume budget
+		self.finish_pls_no = []
 
-	def OnDataBlockCreation(self, j: int) -> None:
-		assert(len(self.eps_G) == j)
+	def OnDataBlockCreation(self) -> None:
 		self.eps_G.append(self.eps_Global)
 		self.eps_U.append(0)
 		self.eps_A.append(0)
@@ -62,6 +62,7 @@ class DPF:
 						self.eps_C[j] += d_i[j]
 						self.eps_A[j] -= d_i[j]
 					seq = sorted_pipelines[i].seq
+					self.finish_pls_no.append(seq)
 					pop_list.append(seq)
 					sorted_pipelines.pop(i)
 					i -= 1
@@ -96,27 +97,17 @@ class DPF:
 			self.eps_U[j] -= d_i[j]
 			self.eps_A[j] += d_i[j]
 
-def Simulation():
-	eps_Global = float(input())
-	first_NPL	 = int(input())
+def Simulation(eps_Global: float, first_NPL: int, NPB: int, NPL: int, pls: list[list[float]]) -> list[int]:
 	dpf = DPF(eps_Global=eps_Global, first_NPL=first_NPL)
-
-	NPB = int(input())
-	for j in range(NPB):
-		dpf.OnDataBlockCreation(j)
-
-	NPL = int(input())
-	wp = []
+	for _ in range(NPB):
+		dpf.OnDataBlockCreation()
+	
+	wp = [] # waiting pipelines
 	for i in range(NPL):
 		pl = Pipelines(i)
-		line = input()
-		pl.demand = [float(item) for item in line.split()]
+		pl.demand = pls[i]
 		dpf.OnPipelineArrival(pl)
 		wp.append(pl)
 		dpf.OnSchedulerTimer(wp)
 
-	for pl in wp:
-		print(pl.seq, end=" ")
-	print()
-
-Simulation()
+	return dpf.finish_pls_no
