@@ -29,7 +29,6 @@ class DPF:
 
 	# def cmp_DominantShare(self, pl1: list[float], pl2: list[float]):
 	def cmp_DominantShare(self, _pl1, _pl2):
-		print(type(_pl1))
 		pl1 = _pl1.get()
 		pl2 = _pl2.get()
 		ds1 = self.DominantShare(pl1)

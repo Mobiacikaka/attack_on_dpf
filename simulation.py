@@ -12,4 +12,8 @@ for _ in range(NPL):
 	line = input()
 	pls.append([float(item) for item in line.split()])
 
-print(Simulation(eps_Global, first_NPL, NPB, pls))
+alloc_pls = Simulation(eps_Global, first_NPL, NPB, pls)
+for i in range(NPL):
+	if i not in alloc_pls:
+		print(i, end=" ")
+print()

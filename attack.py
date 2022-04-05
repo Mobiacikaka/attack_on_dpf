@@ -41,9 +41,9 @@ def yield_attack(
 	sim_arg: tuple[float, int, int, list[list[float]]],
 ):
 	eps_Global, first_NPL, NPB, pls = sim_arg
-	finish_pls_no = Simulation(eps_Global, first_NPL, NPB, pls)
-	print(finish_pls_no)
-	# assert(0)
+	print(len(poison_pls))
+	print(Simulation(eps_Global, first_NPL, NPB, poison_pls+pls))
+	assert(0)
 	return [], []
 
 # def attack(pls: list, step_div: float, step_sys: float, poison_pls_no: list=[0]) -> tuple:
@@ -67,7 +67,7 @@ def attack(
 		pls.pop(poison_pls_no[i-1])
 
 	# attack
-	sim_arg = (eps_Global, first_NPL, NPB, pls)
+	# sim_arg = (eps_Global, first_NPL, NPB, pls)
 	return yield_attack(poison_pls, sim_arg)
 	# return insert_top(pls, poison_pls)
 

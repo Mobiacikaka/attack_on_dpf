@@ -21,7 +21,7 @@ thousands_run() {
 	done
 }
 
-times=100
+times=10
 result_1=$(thousands_run 0.1 $times)
 result_2=$(thousands_run 0.2 $times)
 result_3=$(thousands_run 0.3 $times)
