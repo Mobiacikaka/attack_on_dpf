@@ -55,8 +55,9 @@ def print_pls(
 	n_elep: int=25,
 	n_corr: int=5 ,
 	n_prvblck: int=5,
-):
+) -> list[int]:
 	pls = generate_poison_pls(eps_corr, n_corr, n_prvblck)
+	poison_pls_no = list(range(len(pls)))
 	for item in pls:
 		for item2 in item:
 			print('%.4f'%item2, end=" ")
@@ -66,6 +67,7 @@ def print_pls(
 		for item2 in item:
 			print('%.4f'%item2, end=" ")
 		print()
+	return poison_pls_no
 
 eps_Global= float(input())
 eps_mice	= float(input())
@@ -85,4 +87,7 @@ print(eps_Global)
 print(first_N)
 print(n_prvblck)
 print(n_mice+n_elep+n_corr)
-print_pls(eps_mice, eps_elep, eps_corr, n_mice, n_elep, n_corr, n_prvblck)
+poison_pls_no = print_pls(eps_mice, eps_elep, eps_corr, n_mice, n_elep, n_corr, n_prvblck)
+for i in poison_pls_no:
+	print(i, end=" ")
+print()
