@@ -3,7 +3,6 @@
 from typing import Sequence
 
 class DPF:
-
 	def __init__(self, eps_Global: float=5.0, first_NPL=5):
 		self.eps_Global = eps_Global
 		self.NPB = 0	# number of privacy block
@@ -27,7 +26,7 @@ class DPF:
 				self.eps_U[j] = min(self.eps_G[j] - self.eps_C[j], self.eps_U[j] + self.eps_G[j] / self.first_NPL)
 
 	def OnSchedulerTimer(self, wp: dict[int, list[float]]) -> None:
-		sorted_pipelines = sorted(wp, key=lambda x: self.DominantShare(wp.get(x)))
+		sorted_pipelines = sorted(wp, key=lambda x: self.DominantShareList(wp.get(x)))
 		print(sorted_pipelines)
 		i = 0
 		while i < len(sorted_pipelines):
@@ -52,7 +51,6 @@ class DPF:
 			i += 1
 
 	def DominantShare(self, d_i) -> float:
-		# TODO: Second DominantShare
 		max_share = 0
 		for j in range(self.NPB):
 			if d_i[j] > 0:
@@ -60,6 +58,13 @@ class DPF:
 				if share > max_share:
 					max_share = share
 		return max_share
+
+	def DominantShareList(self, d_i) -> list[float]:
+		ds = []
+		for j in range(self.NPB):
+			ds.append(d_i[j] / self.eps_G[j])
+		ds.sort(reverse=True)
+		return ds
 
 	def CanRun(self, d_i: Sequence[float]) -> bool:
 		flag = True
