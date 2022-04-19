@@ -85,6 +85,42 @@ def slavery_attack(step: float, sim_arg: tuple) -> tuple:
 
 	return poison_pls + normal_pls, list(range(len(poison_pls)))
 
+def block_slave(step: float, sim_arg: tuple) -> tuple:
+	eps_Global, first_NPL, NPB, normal_pls, poison_pls = sim_arg
+	assert(len(poison_pls) == 1)
+
+	step_sys = eps_Global / first_NPL
+	beta = ceil(step / step_sys)
+	alpha = 0.01
+	poison_pl = poison_pls[0]
+	poison_pls = []
+	block_index = 0
+	step -= alpha * (NPB - 1)
+	while True:
+		flag = [item >= step for item in poison_pl]
+		if sum(flag) == 0:
+			poison_pls.append(poison_pl)
+			break
+
+		new_pl = [alpha] * NPB
+		new_pl[block_index] = min(step, poison_pl[block_index])
+		poison_pl[block_index] -= new_pl[block_index]
+
+		block_index = (block_index + 1) % NPB
+
+		if beta < NPB:
+			for i in range(beta, NPB):
+				new_pl[i] = min(step, poison_pl[i])
+				poison_pl[i] -= new_pl[i]
+
+		poison_pls.append(new_pl)
+
+		if beta > NPB:
+			for _ in range(NPB, beta):
+				poison_pls.append([alpha] * NPB)
+
+	return poison_pls + normal_pls, list(range(len(poison_pls)))
+
 def sneak_attack(step: float, sim_arg: tuple) -> tuple:
 	pls, poison_pls_no = top_attack(step, sim_arg)
 
@@ -119,7 +155,7 @@ def main():
 
 	step = float(input())
 	sim_arg = (eps_Global, first_NPL, NPB, normal_pls, poison_pls)
-	pls, poison_pls_no = slavery_attack(step=step, sim_arg=sim_arg)
+	pls, poison_pls_no = block_slave(step=step, sim_arg=sim_arg)
 
 	print(eps_Global)
 	print(first_NPL)
