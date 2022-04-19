@@ -4,8 +4,12 @@ set -e
 
 onerun() {
 	step=$1
-	origin_dataset=$(echo "$(cat ./gen.example.arg)" | ./gen2.py)
-	poison_dataset=$(echo "$origin_dataset\n$step" | ./attack.py)
+	dataset_arg=$(cat ./gen.example.arg)
+	origin_dataset=$(echo "$dataset_arg" | ./dataset_normal.py)
+	poison_dataset=$(echo "$dataset_arg" | ./dataset_poison.py)
+
+	attack_arg=$(echo "$origin_dataset\n$poison_dataset\n$step")
+	poison_dataset=$(echo "$attack_arg" | ./attack.py)
 	origin_result=$(echo "$origin_dataset" | ./simulation.py)
 	poison_result=$(echo "$poison_dataset" | ./simulation.py)
 	count_result=$(echo "$poison_dataset\n$poison_result" | ./count.py)
