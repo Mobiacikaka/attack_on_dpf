@@ -27,7 +27,6 @@ class DPF:
 
 	def OnSchedulerTimer(self, wp: dict[int, list[float]]) -> None:
 		sorted_pipelines = sorted(wp, key=lambda x: self.DominantShareList(wp.get(x)))
-		print(sorted_pipelines)
 		i = 0
 		while i < len(sorted_pipelines):
 			seq = sorted_pipelines[i]
