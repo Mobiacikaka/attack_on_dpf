@@ -50,14 +50,8 @@ def brute_force_choose_k_by_summation(k: int, matrix: list[list[float]], n: int,
 	return perfect_route
 
 def greedy_choose_k_by_summation(k: int, matrix: list[list[float]], n: int, m: int) -> list:
-	sum_list = {}
-	for i in range(n):
-		sum_list[i] = sum(matrix[i])
-	
-	sorted_list = sorted(sum_list, key=lambda x: sum_list[x], reverse=True)
+	sorted_list = sorted(list(range(n)), key=lambda x: sum(matrix[x]), reverse=True)
 	row_list_k = sorted_list[:k]
-
-	print(row_list_k)
 	row_list_k.sort()
 	return row_list_k
 
@@ -80,22 +74,20 @@ def dp_choose_k_by_summation(k: int, matrix: list[list[float]], n: int, m: int) 
 		prsnt_maxvalue = []
 		prsnt_metric = []
 		for i in range(n):
-			pivot = matrix[i]
-			pivot_metric = hist_metric[i]
 			pivot_index = -1
+			pivot_maxvalue = []
+			pivot_metric = hist_metric[i]
 			for j in range(n):
-				cycle_maxvalue = list_max(pivot, hist_maxvalue[j])
+				cycle_maxvalue = list_max(matrix[i], hist_maxvalue[j])
 				cycle_metric = metric(cycle_maxvalue)
 				if cycle_metric > pivot_metric:
-					pivot_metric = cycle_metric
 					pivot_index = j
+					pivot_maxvalue = cycle_maxvalue
+					pivot_metric = cycle_metric
 			if pivot_index >= 0:
-				if i not in hist_route[pivot_index]:
-					prsnt_route.append(hist_route[pivot_index] + [i])
-				else:
-					prsnt_route.append(hist_route[pivot_index])
-				prsnt_maxvalue.append(list_max(matrix[i], hist_maxvalue[pivot_index]))
-				prsnt_metric.append(metric(prsnt_maxvalue[i]))
+				prsnt_route.append(hist_route[pivot_index] + [i])
+				prsnt_maxvalue.append(pivot_maxvalue)
+				prsnt_metric.append(pivot_metric)
 			else:
 				prsnt_route.append(hist_route[i])
 				prsnt_maxvalue.append(hist_maxvalue[i])
@@ -114,6 +106,59 @@ def dp_choose_k_by_summation(k: int, matrix: list[list[float]], n: int, m: int) 
 	perfect_route = hist_route[perfect_index]
 	perfect_route.sort()
 	return perfect_route
+
+def dp_choose_k_by_summation_kai(k: int, matrix: list[list[float]], n: int, m: int) -> list:
+	dp_routes = []
+	dp_listmaxs = []
+	dp_metrics = []
+
+	for _ in range(k+1):
+		dp_route = []
+		dp_listmax = []
+		dp_metric = []
+		for _ in range(n):
+			dp_route.append([])
+			dp_listmax.append([0] * m)
+			dp_metric.append(0)
+		dp_routes.append(dp_route)
+		dp_listmaxs.append(dp_listmaxs)
+		dp_metrics.append(dp_metric)
+	
+	level_perfectroute = []
+	level_perfectlistmax = []
+	level_perfectmetric = 0
+	for kbar in range(1, k+1):
+		for i in range(n):
+			pivot_index = -1
+			pivot_listmax = []
+			pivot_metric = dp_metrics[kbar-1][i]
+			for j in range(n):
+				cycle_listmax = list_max(matrix[i], dp_listmaxs[kbar-1][j])
+				cycle_metric = sum(cycle_listmax)
+				if cycle_metric > pivot_metric:
+					pivot_index = j
+					pivot_listmax = cycle_listmax
+					pivot_metric = cycle_metric
+			if pivot_index >= 0:
+				dp_routes[kbar][i] = dp_routes[kbar-1][pivot_index] + [i]
+				dp_listmaxs[kbar][i] = pivot_listmax
+				dp_metrics[kbar][i] = pivot_metric
+			else:
+				dp_routes[kbar][i] = level_perfectroute
+				dp_listmaxs[kbar][i] = level_perfectlistmax
+				dp_metrics[kbar][i] = level_perfectmetric
+
+		level_perfectroute = []
+		level_perfectlistmax = []
+		level_perfectmetric = 0
+		for i in range(n):
+			if level_perfectmetric < dp_metrics[kbar][i]:
+				level_perfectroute = dp_routes[kbar][i]
+				level_perfectlistmax = dp_listmaxs[kbar][i]
+				level_perfectmetric = dp_metrics[kbar][i]
+
+	level_perfectroute.sort()
+	return level_perfectroute
 
 def dp_choose_k_by_maxmin(k: int, matrix: list[list[float]], n: int, m: int) -> list:
 	hist_route = []
@@ -145,10 +190,7 @@ def dp_choose_k_by_maxmin(k: int, matrix: list[list[float]], n: int, m: int) -> 
 					pivot_metric = cycle_metric
 					pivot_index = j
 			if pivot_index >= 0:
-				if i not in hist_route[pivot_index]:
-					prsnt_route.append(hist_route[pivot_index] + [i])
-				else:
-					prsnt_route.append(hist_route[pivot_index])
+				prsnt_route.append(hist_route[pivot_index] + [i])
 				prsnt_maxvalue.append(list_max(matrix[i], hist_maxvalue[pivot_index]))
 				prsnt_metric.append(pivot_metric)
 			else:
@@ -182,7 +224,7 @@ def k_attack(k: int, sim_arg: tuple) -> tuple:
 			print("%.4f"%i, end=" ")
 		print()
 
-	row_list_k = dp_choose_k_by_maxmin(k, eps_U_list, len(eps_U_list), NPB)
+	row_list_k = greedy_choose_k_by_summation(k, eps_U_list, len(eps_U_list), NPB)
 	print(row_list_k)
 	def fill_in_poison_pls_by_summation():
 		max_value_row = [0] * NPB
