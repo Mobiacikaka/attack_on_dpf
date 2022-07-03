@@ -4,8 +4,9 @@
 from itertools import combinations
 import numpy as np
 
+## Assist Function
+# generate 2-dimentional array
 def gen_2dim_array(n: int, m: int) -> list:
-	# generate 2-dimentional array
 	arr = []
 	for _ in range(n):
 		row = []
@@ -18,12 +19,20 @@ def colmax(arr: list[list], k: int, m: int) -> list:
 	collist = []
 	for j in range(m):
 		maxv = 0
-		for i in range(k):
+		for i in range(len(arr)):
 			if maxv < arr[i][j]:
 				maxv = arr[i][j]
 		collist.append(maxv)
 	return collist
 
+def sum_maxv(arr: list[list[int|float]], rowlist: list[int], n: int, m: int, k: int) -> int|float:
+	rows = []
+	for rid in rowlist:
+		rows.append(arr[rid])
+	return sum(colmax(rows, k, m))
+
+
+## Main Choosen Function
 def brute_force(arr: list[list], n: int, m: int, k: int) -> list:
 	maxm = 0
 	maxrlist = []
@@ -55,21 +64,48 @@ def greedy(arr: list[list], n: int, m: int, k: int) -> list:
 	return rowlist
 
 def dp(arr: list[list], n: int, m: int, k: int) -> list:
-	return []
+	dp_r = []
 
-def sum_maxv(arr, rowlist, n, m, k):
-	rows = []
-	for rid in rowlist:
-		rows.append(arr[rid])
-	return sum(colmax(rows, k, m))
+	for _ in range(n):
+		dp_r.append([])
 
-def greedy_switch(arr: list[list], n: int, m: int, k: int) -> list:
-	rowlist = greedy(arr, n, m, k)
+	for _ in range(k):
+		new_r = []
+		for i in range(n):
+			pivot_id = -1
+			pivot_m = sum_maxv(arr, dp_r[i], n, m, k)
+			for j in range(n):
+				tmp_r = dp_r[j] + [i]
+				tmp_m = sum_maxv(arr, tmp_r, n, m, k)
+				if tmp_m > pivot_m:
+					pivot_id = j
+					pivot_m = tmp_m
+			if pivot_id >= 0:
+				new_r.append(dp_r[pivot_id] + [i])
+			else:
+				new_r.append(dp_r[i])
+
+		dp_r = new_r
+
+	maxid = 0
+	for i in range(1, n):
+		if sum_maxv(arr, dp_r[i], n, m, k) > sum_maxv(arr, dp_r[maxid], n, m, k):
+			maxid = i
+	
+	max_r = dp_r[maxid]
+	sorted(max_r)
+	return max_r
+
+
+## Repair Function
+def repair(arr: list[list], n: int, m: int, k: int) -> list:
+	rowlist = dp(arr, n, m, k)
 	maxv = sum_maxv(arr, rowlist, n, m, k)
 
 	from copy import deepcopy
 
 	while True:
+		old_maxv = maxv
 		for i in range(len(rowlist)):
 			for rid in range(n):
 				if rid not in rowlist:
@@ -79,25 +115,8 @@ def greedy_switch(arr: list[list], n: int, m: int, k: int) -> list:
 					if newmaxv > maxv:
 						rowlist = newlist
 						maxv = newmaxv
-
-	# while True:
-	# 	tmp_rlist = deepcopy(rowlist)
-	# 	tmp_maxv = maxv
-	# 	for i in range(len(rowlist)):
-	# 		for rid in range(n):
-	# 			if rid not in tmp_rlist:
-	# 				new_rlist = deepcopy(rowlist)
-	# 				new_rlist[i] = rid
-	# 				new_v = sum_maxv(arr, new_rlist, n, m, k)
-	# 				if new_v > tmp_maxv:
-	# 					tmp_maxv = new_v
-	# 					tmp_rlist = deepcopy(new_rlist)
-		
-	# 	if tmp_maxv == maxv:
-	# 		break
-	# 	elif tmp_maxv > maxv:
-	# 		rowlist = deepcopy(tmp_rlist)
-	# 		maxv = tmp_maxv
+		if maxv == old_maxv:
+			break
 
 	return sorted(rowlist)
 
@@ -106,15 +125,18 @@ if __name__ == '__main__':
 	m = 15
 	k = 5
 	dataset = gen_2dim_array(n, m)
-	# for e in dataset:
-	# 	print(e)
-	# print()
 
-	def callfunc(funcname, name):
+	def callfunc(funcname, name) -> int|float:
 		rlist = funcname(dataset, n, m, k)
 		maxv = sum_maxv(dataset, rlist, n, m, k)
 		print(f'{name} : {rlist}, sum: {maxv}')
+		return maxv
 
-	callfunc(brute_force, 'brute')
-	callfunc(greedy, 'greedy')
-	callfunc(greedy_switch, 'greedy_switch')
+	maxv1 = callfunc(brute_force, 'brute')
+	maxv2 = callfunc(greedy, 'greedy')
+	maxv3 = callfunc(dp, 'dp')
+	maxv4 = callfunc(repair, 'repair')
+	if maxv1 != maxv4:
+		for e in dataset:
+			print(e)
+		print()
