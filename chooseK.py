@@ -98,8 +98,7 @@ def dp(arr: list[list], n: int, m: int, k: int) -> list:
 
 
 ## Repair Function
-def repair(arr: list[list], n: int, m: int, k: int) -> list:
-	rowlist = dp(arr, n, m, k)
+def repair(arr: list[list], n: int, m: int, k: int, rowlist: list[int]) -> list:
 	maxv = sum_maxv(arr, rowlist, n, m, k)
 
 	from copy import deepcopy
@@ -120,23 +119,4 @@ def repair(arr: list[list], n: int, m: int, k: int) -> list:
 
 	return sorted(rowlist)
 
-if __name__ == '__main__':
-	n = 20
-	m = 15
-	k = 5
-	dataset = gen_2dim_array(n, m)
 
-	def callfunc(funcname, name) -> int|float:
-		rlist = funcname(dataset, n, m, k)
-		maxv = sum_maxv(dataset, rlist, n, m, k)
-		print(f'{name} : {rlist}, sum: {maxv}')
-		return maxv
-
-	maxv1 = callfunc(brute_force, 'brute')
-	maxv2 = callfunc(greedy, 'greedy')
-	maxv3 = callfunc(dp, 'dp')
-	maxv4 = callfunc(repair, 'repair')
-	if maxv1 != maxv4:
-		for e in dataset:
-			print(e)
-		print()
