@@ -107,59 +107,6 @@ def dp_choose_k_by_summation(k: int, matrix: list[list[float]], n: int, m: int) 
 	perfect_route.sort()
 	return perfect_route
 
-def dp_choose_k_by_summation_kai(k: int, matrix: list[list[float]], n: int, m: int) -> list:
-	dp_routes = []
-	dp_listmaxs = []
-	dp_metrics = []
-
-	for _ in range(k+1):
-		dp_route = []
-		dp_listmax = []
-		dp_metric = []
-		for _ in range(n):
-			dp_route.append([])
-			dp_listmax.append([0] * m)
-			dp_metric.append(0)
-		dp_routes.append(dp_route)
-		dp_listmaxs.append(dp_listmaxs)
-		dp_metrics.append(dp_metric)
-	
-	level_perfectroute = []
-	level_perfectlistmax = []
-	level_perfectmetric = 0
-	for kbar in range(1, k+1):
-		for i in range(n):
-			pivot_index = -1
-			pivot_listmax = []
-			pivot_metric = dp_metrics[kbar-1][i]
-			for j in range(n):
-				cycle_listmax = list_max(matrix[i], dp_listmaxs[kbar-1][j])
-				cycle_metric = sum(cycle_listmax)
-				if cycle_metric > pivot_metric:
-					pivot_index = j
-					pivot_listmax = cycle_listmax
-					pivot_metric = cycle_metric
-			if pivot_index >= 0:
-				dp_routes[kbar][i] = dp_routes[kbar-1][pivot_index] + [i]
-				dp_listmaxs[kbar][i] = pivot_listmax
-				dp_metrics[kbar][i] = pivot_metric
-			else:
-				dp_routes[kbar][i] = level_perfectroute
-				dp_listmaxs[kbar][i] = level_perfectlistmax
-				dp_metrics[kbar][i] = level_perfectmetric
-
-		level_perfectroute = []
-		level_perfectlistmax = []
-		level_perfectmetric = 0
-		for i in range(n):
-			if level_perfectmetric < dp_metrics[kbar][i]:
-				level_perfectroute = dp_routes[kbar][i]
-				level_perfectlistmax = dp_listmaxs[kbar][i]
-				level_perfectmetric = dp_metrics[kbar][i]
-
-	level_perfectroute.sort()
-	return level_perfectroute
-
 def dp_choose_k_by_maxmin(k: int, matrix: list[list[float]], n: int, m: int) -> list:
 	hist_route = []
 	hist_maxvalue = []
