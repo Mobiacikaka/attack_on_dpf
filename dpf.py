@@ -20,7 +20,7 @@ class DPF:
 		self.eps_C.append(0)
 		self.NPB += 1
 
-	def OnPipelineArrival(self, pl: list[float]) -> None:
+	def OnPipelineArrival(self, pl: list[int|float]) -> None:
 		for j in range(self.NPB):
 			if pl[j] > 0:
 				self.eps_U[j] = min(self.eps_G[j] - self.eps_C[j], self.eps_U[j] + self.eps_G[j] / self.first_NPL)
@@ -78,7 +78,8 @@ class DPF:
 			self.eps_U[j] -= d_i[j]
 			self.eps_A[j] += d_i[j]
 
-def Simulation(eps_Global: float, first_NPL: int, NPB: int, pls: list[list[float]]) -> list[int]:
+def Simulation(sim_arg: tuple) -> list[int]:
+	eps_Global, first_NPL, NPB, pls = sim_arg
 	dpf = DPF(eps_Global=eps_Global, first_NPL=first_NPL)
 	for _ in range(NPB):
 		dpf.OnDataBlockCreation()
