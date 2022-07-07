@@ -7,6 +7,8 @@ from copy import deepcopy
 import random
 
 alpha = 0.01
+alsa = 2.0
+alsb = lambda x, y: int(x)
 
 def pre_allocation(wp: dict, dpf: DPF, k: int, index: int, NPB: int) -> tuple[list[list[int|float]], int|float]:
 	for _ in range(k):
@@ -30,7 +32,7 @@ def olattack_threshold(k: int, sim_arg: tuple) -> tuple:
 	wp = {}
 	i = 0
 	index = 0
-	threshold = (eps_Global / first_NPL) * NPB * k * 1.1
+	threshold = (eps_Global / first_NPL) * NPB * k * alsa
 
 	# Simulation
 	while True:
@@ -44,7 +46,6 @@ def olattack_threshold(k: int, sim_arg: tuple) -> tuple:
 			# judge if insert
 			poison_pls, tt_alloc = pre_allocation(deepcopy(wp), deepcopy(dpf), k, index, NPB)
 			if tt_alloc >= threshold:
-				print(tt_alloc, threshold)
 				pls = benign_pls[:i] + poison_pls + benign_pls[i:]
 				break
 
@@ -108,6 +109,7 @@ def ensure_alloc_one(wp: dict, dpf: DPF, T_db: float, T_nb: int) -> tuple[bool, 
 						continue
 				pl1 = pl2
 				nb_max = nb_tmp
+				flag = True
 
 	return flag, pl1
 
@@ -121,8 +123,8 @@ def olattack_1inarow(k: int, sim_arg) -> tuple:
 	wp = {}
 	i = 0
 	index = 0
-	T_db = 1.5 * eps_Global / first_NPL
-	T_nb = int(NPB / k)
+	T_db = alsa * eps_Global / first_NPL
+	T_nb = alsb(NPB, k)
 
 	# Simulation
 	for i in range(len(benign_pls)):
@@ -139,8 +141,8 @@ def olattack_1inarow(k: int, sim_arg) -> tuple:
 				dpf.OnSchedulerTimer(wp)
 		else:
 			flag, poison_pl = ensure_alloc_one(wp=deepcopy(wp), dpf=deepcopy(dpf), T_db=T_db, T_nb=T_nb)
+			# print(flag, ["%.2f"%item for item in poison_pl])
 			if flag:
-				print(k, ["%.2f"%item for item in poison_pl])
 				pls.append(poison_pl)
 				wp[index] = poison_pl
 				poison_pls_no.append(index)
@@ -162,22 +164,24 @@ def gendata() -> tuple:
 	first_NPL		= 10
 	NPB					= 10
 	benign_pls	= []
-	for _ in range(first_NPL * 2):
+	for _ in range(first_NPL * 3):
 		step = eps_Global / first_NPL
-		pl = [random.uniform(step * 0.5, step * 1.1) for _ in range(NPB)]
-		# print(["%.2f"%item for item in pl])
+		pl = [random.uniform(step * 0.25, step * 0.75) for _ in range(NPB)]
 		benign_pls.append(pl)
 
 	return eps_Global, first_NPL, NPB, benign_pls
 
 if __name__ == '__main__':
-	sim_arg = gendata()
-	pls, poison_pls_no = olattack_1inarow(3, sim_arg)
-	print("poison_pls_no", poison_pls_no)
-	for no in poison_pls_no:
-		print(["%.2f"%item for item in pls[no]])
+	eps_Global, first_NPL, NPB, benign_pls = gendata()
+	sim_arg = eps_Global, first_NPL, NPB, benign_pls
+	finish_num = len(dpf.Simulation(sim_arg))
+	print("finish_num: ", finish_num)
+
+	pls, poison_pls_no = olattack_threshold(3, sim_arg)
+	sim_arg = eps_Global, first_NPL, NPB, pls
 	finish_pls_no = dpf.Simulation(sim_arg)
+	finish_num = len(finish_pls_no)
 	for item in poison_pls_no:
-		if item not in finish_pls_no:
-			print(item, " not finish")
-			assert(0)
+		if item in finish_pls_no:
+			finish_num -= 1
+	print("finish_num: ", finish_num)

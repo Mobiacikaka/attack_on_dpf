@@ -80,6 +80,19 @@ def k_attack(k: int, sim_arg: tuple) -> tuple:
 	# return normal_pls, row_list_k
 	return [], []
 
+def gendata() -> tuple:
+	eps_Global	= 10.0
+	first_NPL		= 10
+	NPB					= 10
+	benign_pls	= []
+	for _ in range(first_NPL * 2):
+		step = eps_Global / first_NPL
+		pl = [random.uniform(step * 0.5, step * 1.1) for _ in range(NPB)]
+		# print(["%.2f"%item for item in pl])
+		benign_pls.append(pl)
+
+	return eps_Global, first_NPL, NPB, benign_pls
+
 def main():
 	eps_Global= float(input())
 	first_NPL	= int(input())
@@ -114,3 +127,5 @@ def main():
 
 main()
 
+# TODO: maybe wrong that all poison pipelines are calculated from
+# a static analyze instead of a dynamic analyzation.
