@@ -12,12 +12,14 @@ class DPF:
 		self.eps_A = [] # allocated budget
 		self.eps_C = [] # consume budget
 		self.finish_pls_no = []
+		self.finish_sum = []
 
 	def OnDataBlockCreation(self) -> None:
 		self.eps_G.append(self.eps_Global)
 		self.eps_U.append(0)
 		self.eps_A.append(0)
 		self.eps_C.append(0)
+		self.finish_sum.append(0)
 		self.NPB += 1
 
 	def OnPipelineArrival(self, pl: list[int|float]) -> None:
@@ -43,6 +45,7 @@ class DPF:
 					assert(seq not in self.finish_pls_no)
 					wp.pop(seq)
 					self.finish_pls_no.append(seq)
+					self.finish_sum = [self.finish_sum[l]+d_i[l] for l in range(self.NPB)]
 				else:
 					for j in range(self.NPB):
 						self.eps_U[j] += d_i[j]
@@ -90,4 +93,6 @@ def Simulation(sim_arg: tuple) -> list[int]:
 		dpf.OnPipelineArrival(pls[i])
 		dpf.OnSchedulerTimer(wp)
 
+	print("finish_sum", ["%.2f"%item for item in dpf.finish_sum])
+	print("finish_pls_no", dpf.finish_pls_no)
 	return dpf.finish_pls_no
