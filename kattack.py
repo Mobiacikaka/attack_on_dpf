@@ -2,13 +2,15 @@
 # vim:ts=2:sw=2:noet
 
 from dpf import DPF
+import random
+import dpf
 import copy
 from chooseK import gen_2dim_array, brute_force, greedy, dp, repair
 
 # acquire eps_U in all time
 def return_eps_U_list(alpha: float, k: int, sim_arg: tuple) -> list[list[float]]:
-	eps_Global, first_NPL, NPB, normal_pls, _ = sim_arg
-	pls = [ [alpha]*NPB ] * k + normal_pls
+	eps_Global, first_NPL, NPB, benign_pls = sim_arg
+	pls = [ [alpha]*NPB ] * k + benign_pls
 
 	def Simulation():
 		nonlocal eps_Global, first_NPL, pls
@@ -30,21 +32,29 @@ def return_eps_U_list(alpha: float, k: int, sim_arg: tuple) -> list[list[float]]
 
 ## k : the attacker can only insert k poisoned pipelines
 def k_attack(k: int, sim_arg: tuple) -> tuple:
-	_, _, NPB, normal_pls, _ = sim_arg
-	n = k + len(normal_pls)
+	_, _, NPB, benign_pls = sim_arg
+	n = k + len(benign_pls)
 	m = NPB
 
 	alpha = 0.001
 
 	# eps_U_list = gen_2dim_array(n, m)
 	eps_U_list = return_eps_U_list(alpha, k, sim_arg)
-	for eps_U in eps_U_list:
-		for i in eps_U:
-			print("%.4f"%i, end=" ")
-		print()
-
 	row_list_k = greedy(eps_U_list, n, m, k)
-	print(row_list_k)
+
+	def compress_rowlist(row_list_k, eps_U_list):
+		ulist = [0 for _ in NPB]
+		i = 0
+		while i < len(row_list_k):
+			tmp_ulist = ulist
+			rid = row_list_k[i]
+			ulist = [max(ulist[j], eps_U_list[rid][j]) for j in range(NPB)]
+			if ulist != tmp_ulist:
+				row_list_k.remove(rid)
+				i -= 1
+			i += 1
+	compress_rowlist(row_list_k, eps_U_list)
+
 	def fill_in_poison_pls_by_summation():
 		max_value_row = [0] * NPB
 		max_value = [0] * NPB
@@ -64,21 +74,16 @@ def k_attack(k: int, sim_arg: tuple) -> tuple:
 			i += 1
 		row_list_k.sort()
 		for _ in range(k-len(row_list_k)):
-			normal_pls.insert(0, [alpha] * NPB)
+			benign_pls.insert(0, [alpha] * NPB)
 		for row in row_list_k:
-			normal_pls.insert(row, [alpha] * NPB)
+			benign_pls.insert(row, [alpha] * NPB)
 
 		for i in range(NPB):
 			row = max_value_row[i]
-			normal_pls[row][i] = eps_U_list[row][i] + alpha
+			benign_pls[row][i] = eps_U_list[row][i] + alpha
 	fill_in_poison_pls_by_summation()
 
-	for pl in normal_pls:
-		for demand in pl:
-			print('%.4f'%demand, end=" ")
-		print()
-	# return normal_pls, row_list_k
-	return [], []
+	return benign_pls, poison_pls_no
 
 def gendata() -> tuple:
 	eps_Global	= 10.0
@@ -93,39 +98,21 @@ def gendata() -> tuple:
 
 	return eps_Global, first_NPL, NPB, benign_pls
 
-def main():
-	eps_Global= float(input())
-	first_NPL	= int(input())
-	NPB	= int(input())
+if __name__ == '__main__':
+	eps_Global, first_NPL, NPB, benign_pls = gendata()
+	sim_arg = eps_Global, first_NPL, NPB, benign_pls
+	finish_num = len(dpf.Simulation(sim_arg))
+	print("finish_num: ", finish_num)
 
-	NPL	= int(input())
-	normal_pls = []
-	for _ in range(NPL):
-		normal_pls.append([float(i) for i in input().split()])
-
-	poison_num = int(input())
-	poison_pls = []
-	for _ in range(poison_num):
-		poison_pls.append([float(i) for i in input().split()])
-
-	# step = float(input())
-	sim_arg = (eps_Global, first_NPL, NPB, normal_pls, poison_pls)
 	pls, poison_pls_no = k_attack(5, sim_arg)
-
-	print(eps_Global)
-	print(first_NPL)
-	print(NPB)
-	print(len(pls))
-	for item in pls:
-		for item2 in item:
-			print('%.4f'%item2, end=" ")
-		print()
-
-	for pl_no in poison_pls_no:
-		print(pl_no, end=" ")
-	print()
-
-main()
+	print(poison_pls_no)
+	sim_arg = eps_Global, first_NPL, NPB, benign_pls
+	finish_pls_no = dpf.Simulation(sim_arg)
+	finish_num = len(finish_pls_no)
+	for item in poison_pls_no:
+		if item in finish_pls_no:
+			finish_num -= 1
+	print("finish_num: ", finish_num)
 
 # TODO: maybe wrong that all poison pipelines are calculated from
 # a static analyze instead of a dynamic analyzation.
