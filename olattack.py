@@ -37,7 +37,7 @@ def olattack_threshold(k: int, sim_arg: tuple) -> tuple:
 	# Simulation
 	while True:
 		## judge if insert
-		if first_NPL == index + k:
+		if first_NPL == index + k + len(wp):
 			# pre-allocation
 			poison_pls, _ = pre_allocation(deepcopy(wp), deepcopy(dpf), k, index, NPB)
 			pls = benign_pls[:i] + poison_pls + benign_pls[i:]
@@ -177,7 +177,7 @@ if __name__ == '__main__':
 	finish_num = len(dpf.Simulation(sim_arg))
 	print("finish_num: ", finish_num)
 
-	pls, poison_pls_no = olattack_threshold(3, sim_arg)
+	pls, poison_pls_no = olattack_1inarow(3, sim_arg)
 	sim_arg = eps_Global, first_NPL, NPB, pls
 	finish_pls_no = dpf.Simulation(sim_arg)
 	finish_num = len(finish_pls_no)
