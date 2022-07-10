@@ -31,20 +31,32 @@ def sum_maxv(arr: list[list[int|float]], rowlist: list[int], n: int, m: int, k: 
 		rows.append(arr[rid])
 	return sum(colmax(rows, k, m))
 
+def compress_rowlist(rklist, eps_U_list) -> list[int]:
+	NPB = len(eps_U_list[0])
+	colindex = [rklist[0]] * NPB
+	for rid in rklist:
+		for j in range(NPB):
+			if eps_U_list[rid][j] > eps_U_list[colindex[j]][j]:
+				colindex[j] = rid
+
+	new_rklist = set()
+	for rid in colindex:
+		new_rklist.add(rid)
+	return list(new_rklist)
 
 ## Main Choosen Function
 def brute_force(arr: list[list], n: int, m: int, k: int) -> list:
-	maxm = 0
+	maxsum = 0
 	maxrlist = []
 	for rowlist in combinations(list(range(n)), k):
 		rowlist = list(rowlist)
 		rows = []
 		for rid in rowlist:
 			rows.append(arr[rid])
-		colm = sum(colmax(rows, k, m))
-		if colm > maxm:
+		colsum = sum(colmax(rows, k, m))
+		if colsum > maxsum:
 			maxrlist = rowlist
-			maxm = colm
+			maxsum = colsum
 	return maxrlist
 
 def greedy(arr: list[list], n: int, m: int, k: int) -> list:
