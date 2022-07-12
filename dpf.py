@@ -27,9 +27,10 @@ class DPF:
 			if pl[j] > 0:
 				self.eps_U[j] = min(self.eps_G[j] - self.eps_C[j], self.eps_U[j] + self.eps_G[j] / self.N)
 
-	def OnSchedulerTimer(self, wp: dict[int, list[float]]) -> None:
+	def OnSchedulerTimer(self, wp: dict[int, list[float]]) -> list[int]:
 		sorted_pipelines = sorted(wp, key=lambda x: self.DominantShareList(wp.get(x)))
 		i = 0
+		finished = []
 		while i < len(sorted_pipelines):
 			seq = sorted_pipelines[i]
 			d_i = wp.get(seq)
@@ -45,12 +46,14 @@ class DPF:
 					assert(seq not in self.finish_pls_no)
 					wp.pop(seq)
 					self.finish_pls_no.append(seq)
+					finished.append(seq)
 					self.finish_sum = [self.finish_sum[l]+d_i[l] for l in range(self.NPB)]
 				else:
 					for j in range(self.NPB):
 						self.eps_U[j] += d_i[j]
 						self.eps_A[j] -= d_i[j]
 			i += 1
+		return finished
 
 	def DominantShare(self, d_i) -> float:
 		max_share = 0
@@ -94,5 +97,4 @@ def Simulation(sim_arg: tuple) -> list[int]:
 		dpf.OnSchedulerTimer(wp)
 
 	print("finish_sum", ["%.2f"%item for item in dpf.finish_sum])
-	print("finish_pls_no", dpf.finish_pls_no)
 	return dpf.finish_pls_no
