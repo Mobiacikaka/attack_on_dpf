@@ -76,22 +76,67 @@ def gendata() -> tuple:
 		benign_pls.append(pl)
 	return eps_Global, N, NPB, benign_pls
 
-def atkable(sim_arg, k):
+def atkable(sim_arg, k, rklist):
 	eps_Global, N, NPB, pls = sim_arg
 
-	wp = {}
-	ts = 0
+	# rklist should be sorted
+	for rid in rklist:
+		pls.insert(rid, [alpha] * NPB)
+
 	dpfsys = DPF(eps_Global=eps_Global, N=N)
 	for _ in range(NPB):
 		dpfsys.OnDataBlockCreation()
-	for pl in pls:
-		wp[ts] = pl
-		dpfsys.OnPipelineArrival(pl)
-		finished = dpfsys.OnSchedulerTimer(wp)
-		print(finished)
-		ts += 1
-		if ts >= N:
-			break
+
+	wp = {}
+	index = 0
+	while index < N-k:
+		wp[index] = pls[index]
+		dpfsys.OnPipelineArrival(pls[index])
+		dpfsys.OnSchedulerTimer(wp)
+		index += 1
+	
+	def pre_allocation_one(dpfsys, wp, index, flag: bool) -> list:
+		if flag:
+			wp[index] = pls[index]
+		dpfsys.OnPipelineArrival(pls[index])
+		return dpfsys.OnSchedulerTimer(wp)
+
+	def gen_dominantshare_block_id_list(pls, N, NPB) -> list:
+		ds_id_list = []
+		for i in range(N):
+			maxid = 0
+			for j in range(0, NPB):
+				if pls[i][j] > pls[i][maxid]:
+					maxid = j
+			ds_id_list.append(maxid)
+		return ds_id_list
+	ds_id_list = gen_dominantshare_block_id_list(pls, N, NPB)
+
+	poison_pl_no = -1
+	fillin_block_id_list_list = []
+	fillin_content_list = []
+	while index < N:
+		flag = True # pipeline is benign pipeline
+		if index in rklist:
+			poison_pl_no += 1
+			flag = False # pipeline is poisoned pipeline
+		new_finished = pre_allocation_one(copy.deepcopy(dpfsys), copy.deepcopy(wp), index, flag)
+		if len(new_finished) > 0:
+			fillin_block_id_list = []
+			fillin_content = dpfsys.eps_Global
+			for finished_pl_no in new_finished:
+				ds_id = ds_id_list[finished_pl_no]
+				ds_value = pls[finished_pl_no][ds_id]
+				fillin_block_id_list.append(ds_id)
+				if fillin_content > ds_value:
+					fillin_content = ds_value - alpha
+			fillin_block_id_list_list.append(fillin_block_id_list)
+			fillin_content_list.append(fillin_content)
+
+		wp[index] = pls[index]
+		dpfsys.OnPipelineArrival(pls[index])
+		dpfsys.OnSchedulerTimer(pls[index])
+		index += 1
 
 if __name__ == '__main__':
 	eps_Global, N, NPB, benign_pls = gendata()
