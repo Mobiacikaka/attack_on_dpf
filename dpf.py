@@ -3,10 +3,10 @@
 from typing import Sequence
 
 class DPF:
-	def __init__(self, eps_Global: float=5.0, first_NPL=5):
+	def __init__(self, eps_Global: float=5.0, N=5):
 		self.eps_Global = eps_Global
 		self.NPB = 0	# number of privacy block
-		self.first_NPL = first_NPL # first N pipelines
+		self.N = N # first N pipelines
 		self.eps_G = [] # global budget
 		self.eps_U = [] # unlocked budget
 		self.eps_A = [] # allocated budget
@@ -25,7 +25,7 @@ class DPF:
 	def OnPipelineArrival(self, pl: list[int|float]) -> None:
 		for j in range(self.NPB):
 			if pl[j] > 0:
-				self.eps_U[j] = min(self.eps_G[j] - self.eps_C[j], self.eps_U[j] + self.eps_G[j] / self.first_NPL)
+				self.eps_U[j] = min(self.eps_G[j] - self.eps_C[j], self.eps_U[j] + self.eps_G[j] / self.N)
 
 	def OnSchedulerTimer(self, wp: dict[int, list[float]]) -> None:
 		sorted_pipelines = sorted(wp, key=lambda x: self.DominantShareList(wp.get(x)))
@@ -82,8 +82,8 @@ class DPF:
 			self.eps_A[j] += d_i[j]
 
 def Simulation(sim_arg: tuple) -> list[int]:
-	eps_Global, first_NPL, NPB, pls = sim_arg
-	dpf = DPF(eps_Global=eps_Global, first_NPL=first_NPL)
+	eps_Global, N, NPB, pls = sim_arg
+	dpf = DPF(eps_Global=eps_Global, N=N)
 	for _ in range(NPB):
 		dpf.OnDataBlockCreation()
 	

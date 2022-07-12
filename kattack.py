@@ -11,8 +11,8 @@ alpha = 0.01
 k = 3
 
 def return_eps_U_list(sim_arg: tuple) -> list[list[float]]:
-	eps_Global, first_NPL, NPB, benign_pls = sim_arg
-	dpf = DPF(eps_Global=eps_Global, first_NPL=first_NPL)
+	eps_Global, N, NPB, benign_pls = sim_arg
+	dpf = DPF(eps_Global=eps_Global, N=N)
 	for _ in range(NPB):
 		dpf.OnDataBlockCreation()
 	wp = {}
@@ -28,9 +28,9 @@ def return_eps_U_list(sim_arg: tuple) -> list[list[float]]:
 	return eps_U_list
 
 def brute_force_with_kinsert(sim_arg: tuple, k: int) -> tuple:
-	eps_Global, first_NPL, NPB, benign_pls = sim_arg
+	eps_Global, N, NPB, benign_pls = sim_arg
 
-	dpfsys = DPF(eps_Global=eps_Global, first_NPL=first_NPL)
+	dpfsys = DPF(eps_Global=eps_Global, N=N)
 	for _ in range(NPB):
 		dpfsys.OnDataBlockCreation()
 	wp = {}
@@ -69,97 +69,24 @@ def brute_force_with_kinsert(sim_arg: tuple, k: int) -> tuple:
 
 def gendata() -> tuple:
 	eps_Global	= 10.0
-	first_NPL		= 10
+	N						= 10
 	NPB					= 10
 	benign_pls	= []
-	for _ in range(first_NPL * 3):
-		step = eps_Global / first_NPL
+	for _ in range(N * 3):
+		step = eps_Global / N
 		pl = [random.uniform(step * 0.5, step * 1.15) for _ in range(NPB)]
 		benign_pls.append(pl)
 
-	return eps_Global, first_NPL, NPB, benign_pls
+	return eps_Global, N, NPB, benign_pls
 
-def func3():
-	eps_Global, first_NPL, NPB, benign_pls = gendata()
-
-	pls = benign_pls
-	sim_arg = eps_Global, first_NPL, NPB, pls
-	eps_U_list = return_eps_U_list(sim_arg)
-	rklist = ck.brute_force(eps_U_list, first_NPL, NPB, k)
-	for pl in pls[:first_NPL]:
-		print(["%.2f"%item for item in pl])
-	print()
-	for ulist in eps_U_list[:first_NPL]:
-		print(["%.2f"%item for item in ulist])
-	print()
-	print(ck.compress_rowlist(rklist, eps_U_list))
-	print()
-
-	pls = benign_pls[:first_NPL-k] + [[alpha] * NPB] * k + benign_pls[first_NPL-k:]
-	sim_arg = eps_Global, first_NPL, NPB, pls
-	eps_U_list = return_eps_U_list(sim_arg)
-	rklist = ck.brute_force(eps_U_list, first_NPL, NPB, k)
-	for pl in pls[:first_NPL]:
-		print(["%.2f"%item for item in pl])
-	print()
-	for ulist in eps_U_list[:first_NPL]:
-		print(["%.2f"%item for item in ulist])
-	print()
-	print(ck.compress_rowlist(rklist, eps_U_list))
-
-def func2():
-	eps_Global, first_NPL, NPB, benign_pls = gendata()
-
-	# pls = benign_pls[:first_NPL-k] + [ [alpha] * NPB ] * k + benign_pls[first_NPL-k:]
-	pls = benign_pls
-	sim_arg = eps_Global, first_NPL, NPB, pls
-	eps_U_list = return_eps_U_list(sim_arg)
-	for pl in pls[:first_NPL]:
-		print(["%.2f"%item for item in pl])
-	print()
-	for ulist in eps_U_list[:first_NPL]:
-		print(["%.2f"%item for item in ulist])
-	print()
-
-	def single_attack(pls, ulist):
-		maxv = 0
-		maxx = 0
-		maxy = 0
-		for i in range(len(ulist) - k+1):
-			for j in range(len(ulist[i])):
-				if ulist[i][j] > maxv:
-					maxv = ulist[i][j]
-					maxx = i
-					maxy = j
-		pl = []
-		for _ in range(maxy):
-			pl.append(0)
-		pl.append(maxv + 1.0)
-		for _ in range(10-maxy-1):
-			pl.append(0)
-		assert(len(pl) == 10)
-		pls.insert(maxx, pl)
-		return pls
-	
-	pls = single_attack(benign_pls, eps_U_list[:first_NPL])
-	# for _ in range(k-1):
-	# 	pls.insert(first_NPL - k + 1, [ alpha ] * NPB)
-	sim_arg = eps_Global, first_NPL, NPB, pls
-	eps_U_list = return_eps_U_list(sim_arg)
-	for pl in pls[:first_NPL+1]:
-		print(["%.2f"%item for item in pl])
-	print()
-	for ulist in eps_U_list[:first_NPL+1]:
-		print(["%.2f"%item for item in ulist])
-
-def func1():
-	eps_Global, first_NPL, NPB, benign_pls = gendata()
-	sim_arg = eps_Global, first_NPL, NPB, benign_pls
+if __name__ == '__main__':
+	eps_Global, N, NPB, benign_pls = gendata()
+	sim_arg = eps_Global, N, NPB, benign_pls
 	finish_num = len(dpf.Simulation(sim_arg))
 	print("finish_num: ", finish_num)
 
 	pls, poison_pls_no = brute_force_with_kinsert(sim_arg, 3)
-	sim_arg = eps_Global, first_NPL, NPB, benign_pls
+	sim_arg = eps_Global, N, NPB, benign_pls
 	finish_pls_no = dpf.Simulation(sim_arg)
 	finish_num = len(finish_pls_no)
 	for item in poison_pls_no:

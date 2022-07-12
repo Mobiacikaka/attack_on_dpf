@@ -55,14 +55,14 @@ n_mice		= int(input())
 n_elep		= int(input())
 n_corr		= int(input())
 n_prvblck	= int(input())
-first_N		= int(input())
+N		= int(input())
 
-eps_mice	*= eps_Global / first_N
-eps_elep	*= eps_Global / first_N
-eps_corr	*= eps_Global / first_N
+eps_mice	*= eps_Global / N
+eps_elep	*= eps_Global / N
+eps_corr	*= eps_Global / N
 
 print(eps_Global)
-print(first_N)
+print(N)
 print(n_prvblck)
 print(n_mice+n_elep)
 print_pls(eps_mice, eps_elep, eps_corr, n_mice, n_elep, n_corr, n_prvblck)
