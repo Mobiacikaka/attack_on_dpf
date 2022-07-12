@@ -5,7 +5,6 @@ from dpf import DPF
 import random
 import dpf
 import copy
-import chooseK as ck
 
 alpha = 0.01
 k = 3
@@ -73,23 +72,37 @@ def gendata() -> tuple:
 	NPB					= 10
 	benign_pls	= []
 	for _ in range(N * 3):
-		step = eps_Global / N
-		pl = [random.uniform(step * 0.5, step * 1.15) for _ in range(NPB)]
+		pl = [random.expovariate(1.0) for _ in range(NPB)]
 		benign_pls.append(pl)
-
 	return eps_Global, N, NPB, benign_pls
+
+def atkable(sim_arg, k):
+	eps_Global, N, NPB, pls = sim_arg
+
+	wp = {}
+	ts = 0
+	dpfsys = DPF(eps_Global=eps_Global, N=N)
+	for _ in range(NPB):
+		dpfsys.OnDataBlockCreation()
+	for pl in pls:
+		wp[ts] = pl
+		dpfsys.OnPipelineArrival(pl)
+		finished = dpfsys.OnSchedulerTimer(wp)
+		print(finished)
+		ts += 1
+		if ts >= N:
+			break
 
 if __name__ == '__main__':
 	eps_Global, N, NPB, benign_pls = gendata()
-	sim_arg = eps_Global, N, NPB, benign_pls
-	finish_num = len(dpf.Simulation(sim_arg))
-	print("finish_num: ", finish_num)
 
-	pls, poison_pls_no = brute_force_with_kinsert(sim_arg, 3)
-	sim_arg = eps_Global, N, NPB, benign_pls
-	finish_pls_no = dpf.Simulation(sim_arg)
-	finish_num = len(finish_pls_no)
-	for item in poison_pls_no:
-		if item in finish_pls_no:
-			finish_num -= 1
+	pls = benign_pls
+	sim_arg = eps_Global, N, NPB, pls
+	eps_U_list = return_eps_U_list(sim_arg)
+	finish_num = len(dpf.Simulation(sim_arg))
+	for i in range(N):
+		print(['%.2f'%item for item in pls[i]])
+	print()
+	for i in range(N):
+		print(['%.2f'%item for item in eps_U_list[i]])
 	print("finish_num: ", finish_num)
