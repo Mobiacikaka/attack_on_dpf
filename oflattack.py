@@ -76,6 +76,15 @@ def gendata() -> tuple:
 		benign_pls.append(pl)
 	return eps_Global, N, NPB, benign_pls
 
+def readdata() -> tuple[float, int, int, list[list[int|float]]]:
+	pls_file = open('/tmp/benign_pls')
+	lines = pls_file.readlines()
+	benign_pls = []
+	for line in lines:
+		line = line.replace('\n', '')
+		benign_pls.append([float(item) for item in line.split("\t")])
+	return 10.0, 10, 10, benign_pls
+
 def atkable(sim_arg, k, rklist):
 	eps_Global, N, NPB, pls = sim_arg
 
@@ -145,7 +154,7 @@ def atkable(sim_arg, k, rklist):
 		index += 1
 
 if __name__ == '__main__':
-	eps_Global, N, NPB, benign_pls = gendata()
+	eps_Global, N, NPB, benign_pls = readdata()
 
 	pls = benign_pls
 	sim_arg = eps_Global, N, NPB, pls
