@@ -112,26 +112,32 @@ def atkable(sim_arg, k, rklist):
 		return ds_id_list
 	ds_id_list = gen_dominantshare_block_id_list(pls, N, NPB)
 
-	poison_pl_no = -1
-	fillin_block_id_list_list = []
-	fillin_content_list = []
+	rklist_no = -1
+	fillin_block_id_list_list = [[]] * k
+	fillin_content_list = [eps_Global] * k
 	while index < N:
 		flag = True # pipeline is benign pipeline
 		if index in rklist:
-			poison_pl_no += 1
+			rklist_no += 1
 			flag = False # pipeline is poisoned pipeline
+
 		new_finished = pre_allocation_one(copy.deepcopy(dpfsys), copy.deepcopy(wp), index, flag)
+
 		if len(new_finished) > 0:
-			fillin_block_id_list = []
-			fillin_content = dpfsys.eps_Global
+			fillin_block_id_list = fillin_block_id_list_list[rklist_no]
+			fillin_content = fillin_content_list[rklist_no]
 			for finished_pl_no in new_finished:
 				ds_id = ds_id_list[finished_pl_no]
 				ds_value = pls[finished_pl_no][ds_id]
 				fillin_block_id_list.append(ds_id)
 				if fillin_content > ds_value:
 					fillin_content = ds_value - alpha
-			fillin_block_id_list_list.append(fillin_block_id_list)
-			fillin_content_list.append(fillin_content)
+			# fillin_block_id_list_list[rklist_no] = fillin_content_list
+			fillin_content_list[rklist_no] = fillin_content
+
+			cur_poison_pl = pls[rklist[rklist_no]]
+			for block_id in fillin_block_id_list:
+				cur_poison_pl[block_id] = fillin_content
 
 		wp[index] = pls[index]
 		dpfsys.OnPipelineArrival(pls[index])
