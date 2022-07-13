@@ -85,7 +85,29 @@ def readdata() -> tuple[float, int, int, list[list[int|float]]]:
 		benign_pls.append([float(item) for item in line.split("\t")])
 	return 10.0, 10, 10, benign_pls
 
-def atkable(sim_arg, k, rklist):
+def gen_dominantshare_block_id_list(pls, N, NPB) -> list:
+	ds_id_list = []
+	for i in range(N):
+		maxid = 0
+		for j in range(0, NPB):
+			if pls[i][j] > pls[i][maxid]:
+				maxid = j
+		ds_id_list.append(maxid)
+	return ds_id_list
+
+def atkable(sim_arg) -> list[bool]:
+	eps_Global, N, NPB, pls = sim_arg
+	ds_id_list = gen_dominantshare_block_id_list(pls, N, NPB)
+	atk_list = []
+	step = eps_Global / N
+	for i in range(N-2): # what if there is no poisoned pipeline in the end
+		if pls[i][ds_id_list[i]] > 2*step:
+			atk_list.append(True)
+		else:
+			atk_list.append(False)
+	return atk_list
+
+def allocation(sim_arg, k, rklist):
 	eps_Global, N, NPB, pls = sim_arg
 
 	# rklist should be sorted
@@ -110,15 +132,6 @@ def atkable(sim_arg, k, rklist):
 		dpfsys.OnPipelineArrival(pls[index])
 		return dpfsys.OnSchedulerTimer(wp)
 
-	def gen_dominantshare_block_id_list(pls, N, NPB) -> list:
-		ds_id_list = []
-		for i in range(N):
-			maxid = 0
-			for j in range(0, NPB):
-				if pls[i][j] > pls[i][maxid]:
-					maxid = j
-			ds_id_list.append(maxid)
-		return ds_id_list
 	ds_id_list = gen_dominantshare_block_id_list(pls, N, NPB)
 
 	rklist_no = -1
