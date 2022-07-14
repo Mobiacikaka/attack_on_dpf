@@ -94,7 +94,7 @@ def Simulation(sim_arg: tuple) -> list[int]:
 	for i in range(len(pls)):
 		wp[i] = pls[i]
 		dpf.OnPipelineArrival(pls[i])
-		dpf.OnSchedulerTimer(wp)
+		print(dpf.OnSchedulerTimer(wp))
 
 	print("finish_sum", ["%.2f"%item for item in dpf.finish_sum])
 	return dpf.finish_pls_no
