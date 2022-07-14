@@ -109,7 +109,7 @@ def atkable(sim_arg, ds_id_list) -> list[bool]:
 	atkable_list.append(False)
 	return atkable_list
 
-def allocation(sim_arg, k, rklist):
+def allocation(sim_arg, k, rklist, verbose=True):
 	eps_Global, N, NPB, pls = sim_arg
 
 	# rklist should be sorted
@@ -126,7 +126,9 @@ def allocation(sim_arg, k, rklist):
 	while index < rklist[0]:
 		wp[index] = pls[index]
 		dpfsys.OnPipelineArrival(pls[index])
-		dpfsys.OnSchedulerTimer(wp)
+		if verbose:
+			print(f"TS{index}\tfinished:", dpfsys.OnSchedulerTimer(wp))
+			print("eps_U:", ['%.2f'%item for item in dpfsys.eps_U])
 		index += 1
 	
 	def pre_allocation_one(dpfsys, wp, index) -> list:
@@ -136,15 +138,13 @@ def allocation(sim_arg, k, rklist):
 
 	ds_id_list = gen_dominantshare_block_id_list(pls, N, NPB)
 	atkable_list = atkable(sim_arg, ds_id_list)
-	print(ds_id_list)
-	print(atkable_list)
 
 	robbery_list = []
 	blocking_list = []
 
 	def func_A(rklist_no):
+		nonlocal index, rklist
 		assert(index == rklist[rklist_no])
-		print(rklist[rklist_no])
 		_dpfsys = copy.deepcopy(dpfsys)
 		_wp = copy.deepcopy(wp)
 		cur_poisoned_pl_no = rklist[rklist_no]
@@ -155,7 +155,7 @@ def allocation(sim_arg, k, rklist):
 
 		# add basic robbery and blocking pl to dict
 		for i in range(N):
-			if atkable_list[i] == True and i not in dpfsys.finish_pls_no:
+			if atkable_list[i] == True and i not in _dpfsys.finish_pls_no:
 				if i > cur_poisoned_pl_no:
 					blocking[i] = 0
 
@@ -165,37 +165,88 @@ def allocation(sim_arg, k, rklist):
 			_wp[i] = pls[i]
 			_dpfsys.OnPipelineArrival(pls[i])
 			finished = _dpfsys.OnSchedulerTimer(_wp)
-			print(finished)
+			if verbose:
+				print("pre_alloc:", finished)
+				print("eps_U:", ['%.2f'%item for item in _dpfsys.eps_U])
+				print("wp:", _wp.keys())
 			for pl in finished:
 				if atkable_list[pl] == True:
 					ds_id = ds_id_list[pl]
 					if pl < cur_poisoned_pl_no:
 						robbery[pl] = pls[pl][ds_id]
 					else:
-						blocking[pl] = dpfsys.eps_U[ds_id] + 2 * eps_Global/N - pls[pl][ds_id]
+						blocking[pl] = dpfsys.eps_U[ds_id] + 2 * eps_Global/N - pls[pl][ds_id] # TODO
 
+		# in function A
+		def backtracking(rklist_no, poison_pl_ds_val, overload_value, benign_pl_no) -> bool:
+			if rklist_no == 0:
+				return False
+			ds_id = ds_id_list[benign_pl_no]
+			overload_delta = (overload_value + alpha) - (poison_pl_ds_val - alpha)
+			prv_min_robbery_val = min(robbery_list[rklist_no-1].values())
+			if pls[rklist[rklist_no-1]][ds_id] + overload_delta < prv_min_robbery_val:
+				pls[rklist[rklist_no-1]][ds_id] += overload_delta
+				dpfsys.eps_U[ds_id] -= overload_delta
+				blocking[benign_pl_no] = poison_pl_ds_val - 2 * alpha
+				return True
+			assert(0)
+			return False
+
+		if verbose:
+			print("robbery:", robbery)
+			print("blocking:", blocking)
 		# clear unattackable robbery pipeline
 		while True:
+			if len(robbery) == 0:
+				break
 			min_robbery_key = min(robbery, key=robbery.get)
 			min_robbery_val = robbery.get(min_robbery_key)
 			flag = True
 			for key, value in blocking.items():
 				if value >= min_robbery_val:
-					flag = False
+					flag = backtracking(rklist_no, min_robbery_val, value, key)
+					if not flag:
+						break
 			if flag == False:
+				assert(0)
 				robbery.pop(min_robbery_key)
 				atkable_list[min_robbery_key] = False
 			else:
 				break
 
-		print(robbery)
-		print(blocking)
 		robbery_list.append(robbery)
 		blocking_list.append(blocking)
+		if verbose:
+			print("robbery: ", robbery)
+			print("blocking: ", blocking)
 	
-	for rklist_no in rklist:
-		if rklist_no != N-1:
+		# fill in the blocks that need to be filled in
+		if verbose:
+			print("poison", ["%.2f"%item for item in pls[cur_poisoned_pl_no]])
+		if len(robbery) > 0:
+			min_robbery_val = min(robbery.values())
+			for key, _ in robbery.items():
+				pls[cur_poisoned_pl_no][ds_id_list[key]] = min_robbery_val - alpha
+		for key, value in blocking.items():
+			print(key, value)
+			pls[cur_poisoned_pl_no][ds_id_list[key]] = value + alpha
+		if verbose:
+			print("poison", ["%.2f"%item for item in pls[cur_poisoned_pl_no]])
+
+	def func_B(rklist_no):
+		pass
+
+	for rklist_no in range(len(rklist)):
+		print("\nFill in poisoned pipeline ", index)
+		if rklist_no != len(rklist)-1:
 			func_A(rklist_no)
+			# dpf add pipelines
+			for index in range(rklist[rklist_no], rklist[rklist_no+1]):
+				wp[index] = pls[index]
+				dpfsys.OnPipelineArrival(pls[index])
+				print(f"TS{index} finished: ", dpfsys.OnSchedulerTimer(wp))
+				print("eps_U:", ['%.2f'%item for item in dpfsys.eps_U])
+			index += 1
 		else:
 			func_B(rklist_no)
 
