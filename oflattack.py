@@ -1,7 +1,6 @@
 #!/bin/python
 # vim:ts=2:sw=2:noet
 
-from dpf import DPF
 import random
 import dpf
 import copy
@@ -11,32 +10,32 @@ k = 3
 
 def return_eps_U_list(sim_arg: tuple) -> list[list[float]]:
 	eps_Global, N, NPB, benign_pls = sim_arg
-	dpf = DPF(eps_Global=eps_Global, N=N)
+	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N)
 	for _ in range(NPB):
-		dpf.OnDataBlockCreation()
+		dpfsys.OnDataBlockCreation()
 	wp = {}
 	eps_U_list = []
 
 	# Simulation
 	for i in range(len(benign_pls)):
 		wp[i] = benign_pls[i]
-		dpf.OnPipelineArrival(benign_pls[i])
-		dpf.OnSchedulerTimer(wp)
-		eps_U_list.append(copy.deepcopy(dpf.eps_U))
+		dpfsys.OnPipelineArrival(benign_pls[i])
+		dpfsys.OnSchedulerTimer(wp)
+		eps_U_list.append(copy.deepcopy(dpfsys.eps_U))
 
 	return eps_U_list
 
 def brute_force_with_kinsert(sim_arg: tuple, k: int) -> tuple:
 	eps_Global, N, NPB, benign_pls = sim_arg
 
-	dpfsys = DPF(eps_Global=eps_Global, N=N)
+	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N)
 	for _ in range(NPB):
 		dpfsys.OnDataBlockCreation()
 	wp = {}
 	maxeps_U = []
 	maxindex = 0
 
-	def pre_allocation(dpfsys: DPF, wp: dict, k: int, index: int) -> list[float]:
+	def pre_allocation(dpfsys: dpf.DPF, wp: dict, k: int, index: int) -> list[float]:
 		for i in range(k):
 			pl = [alpha] * dpfsys.NPB
 			wp[index] = pl
@@ -95,7 +94,7 @@ def gen_dominantshare_block_id_list(pls, N, NPB) -> list:
 		ds_id_list.append(maxid)
 	return ds_id_list
 
-def atkable(sim_arg, ds_id_list) -> list[bool]:
+def gen_atkable(sim_arg, ds_id_list) -> list[bool]:
 	eps_Global, N, NPB, pls = sim_arg
 	atkable_list = []
 	step = eps_Global / N
@@ -117,7 +116,7 @@ def allocation(sim_arg, k, rklist, verbose=True):
 	for rid in rklist:
 		pls.insert(rid, [alpha] * NPB)
 
-	dpfsys = DPF(eps_Global=eps_Global, N=N)
+	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N)
 	for _ in range(NPB):
 		dpfsys.OnDataBlockCreation()
 
@@ -126,18 +125,14 @@ def allocation(sim_arg, k, rklist, verbose=True):
 	while index < rklist[0]:
 		wp[index] = pls[index]
 		dpfsys.OnPipelineArrival(pls[index])
+		finished_pls = dpfsys.OnSchedulerTimer(wp)
 		if verbose:
-			print(f"TS{index}\tfinished:", dpfsys.OnSchedulerTimer(wp))
+			print(f"TS{index}:\t", finished_pls)
 			print("eps_U:", ['%.2f'%item for item in dpfsys.eps_U])
 		index += 1
-	
-	def pre_allocation_one(dpfsys, wp, index) -> list:
-		wp[index] = pls[index]
-		dpfsys.OnPipelineArrival(pls[index])
-		return dpfsys.OnSchedulerTimer(wp)
 
 	ds_id_list = gen_dominantshare_block_id_list(pls, N, NPB)
-	atkable_list = atkable(sim_arg, ds_id_list)
+	atkable_list = gen_atkable(sim_arg, ds_id_list)
 
 	robbery_list = []
 	blocking_list = []
@@ -253,6 +248,71 @@ def allocation(sim_arg, k, rklist, verbose=True):
 			index += 1
 		else:
 			func_B(rklist_no)
+
+def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
+	eps_Global, N, NPB, pls = sim_arg
+
+	## Insertion
+	rklist.sort()
+	for rid in rklist:
+		pls.insert(rid, [alpha] * NPB)
+
+	## Get unallocated budget list
+	dpfsys = dpf.DPF(eps_Global, N, NPB)
+	wp = {}
+	unallocated_budget_list = []
+	for i in range(rklist[0]):
+		dpf.pre_Allocation_one(dpfsys, wp, pls, i, verbose)
+		unallocated_budget_list.append(copy.deepcopy(dpfsys.eps_U))
+
+	## get block id number for every pipeline's Dominant Share
+	ds_id_list = gen_dominantshare_block_id_list(pls, N, NPB)
+
+	## get ATKABLE list of pipelines
+	atkable_list = gen_atkable(sim_arg, ds_id_list)
+
+	## when atkable_list change, go into loop again
+	## with all parameters restore.
+	def loop_alltimestamp(dpfsys: dpf.DPF, wp: dict, pls: list[list], unallocated_budget_list: list[list]):
+		def timestamp(index: int, rklist_index: int):
+			def loop_onetimestamp(index: int, rklist_index: int)
+				cur_poisoned_pl_no = rklist[rklist_index]
+				poisoned_pl = pls[cur_poisoned_pl_no]
+				dpfsys_new, _, finished_pls = \
+					dpf.pre_Allocation_one(copy.deepcopy(dpfsys), copy.deepcopy(wp), pls, index)
+				unallocated_budget = copy.deepcopy(dpfsys_new.eps_U)
+				unallocated_budget_list.append(unallocated_budget)
+				for finished_pl in finished_pls:
+					if not atkable_list[finished_pl]:
+						continue
+					ds_index = ds_id_list[finished_pl]
+					ds_value = pls[finished_pl][ds_index]
+					poisoned_pl[ds_index] += unallocated_budget[ds_index] + alpha
+					unallocated_budget = [unallocated_budget[j] + pls[finished_pl][j] for j in range(NPB)]
+					unallocated_budget[ds_index] -= (poisoned_pl[ds_index] - alpha)
+				return True
+			assert(0)
+
+		rklist_index = -1
+		for index in range(rklist[0], N):
+			if index in rklist:
+				rklist_index += 1
+				assert(index == rklist[rklist_index])
+			flag = timestamp(index, rklist_index)
+			if flag == False:
+				return False, []
+		return True, pls
+	
+	while True:
+		flag, new_pls = loop_alltimestamp(
+			copy.deepcopy(dpfsys), 
+			copy.deepcopy(wp), 
+			copy.deepcopy(pls), 
+			copy.deepcopy(unallocated_budget_list)
+		)
+		if flag == True:
+			pls = new_pls
+			break
 
 if __name__ == '__main__':
 	eps_Global, N, NPB, benign_pls = readdata()
