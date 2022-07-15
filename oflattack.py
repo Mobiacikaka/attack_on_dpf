@@ -175,20 +175,26 @@ def allocation(sim_arg, k, rklist, verbose=True):
 					if pl < cur_poisoned_pl_no:
 						robbery[pl] = pls[pl][ds_id]
 					else:
-						blocking[pl] = dpfsys.eps_U[ds_id] + 2 * eps_Global/N - pls[pl][ds_id] # TODO
+						if nxt_poisoned_pl_no == N-1:
+							blocking[pl] = dpfsys.eps_U[ds_id] + 3 * eps_Global/N - pls[pl][ds_id] # TODO
+						else:
+							blocking[pl] = dpfsys.eps_U[ds_id] + 2 * eps_Global/N - pls[pl][ds_id] # TODO
 
 		# in function A
 		def backtracking(rklist_no, poison_pl_ds_val, overload_value, benign_pl_no) -> bool:
 			if rklist_no == 0:
 				return False
+			prv_poisoned_pl_no = rklist[rklist_no-1]
 			ds_id = ds_id_list[benign_pl_no]
-			overload_delta = (overload_value + alpha) - (poison_pl_ds_val - alpha)
+			overload_delta = overload_value - poison_pl_ds_val
 			prv_min_robbery_val = min(robbery_list[rklist_no-1].values())
-			if pls[rklist[rklist_no-1]][ds_id] + overload_delta < prv_min_robbery_val:
-				pls[rklist[rklist_no-1]][ds_id] += overload_delta
+			if pls[prv_poisoned_pl_no][ds_id] + overload_delta < prv_min_robbery_val:
+				pls[prv_poisoned_pl_no][ds_id] += overload_delta
 				dpfsys.eps_U[ds_id] -= overload_delta
-				blocking[benign_pl_no] = poison_pl_ds_val - 2 * alpha
+				blocking[benign_pl_no] = poison_pl_ds_val - alpha
 				return True
+			else:
+				assert(0)
 			assert(0)
 			return False
 
@@ -204,7 +210,8 @@ def allocation(sim_arg, k, rklist, verbose=True):
 			flag = True
 			for key, value in blocking.items():
 				if value >= min_robbery_val:
-					flag = backtracking(rklist_no, min_robbery_val, value, key)
+					assert(min_robbery_val != None)
+					flag = backtracking(rklist_no, min_robbery_val-alpha, value+alpha, key)
 					if not flag:
 						break
 			if flag == False:
@@ -221,14 +228,11 @@ def allocation(sim_arg, k, rklist, verbose=True):
 			print("blocking: ", blocking)
 	
 		# fill in the blocks that need to be filled in
-		if verbose:
-			print("poison", ["%.2f"%item for item in pls[cur_poisoned_pl_no]])
 		if len(robbery) > 0:
 			min_robbery_val = min(robbery.values())
 			for key, _ in robbery.items():
 				pls[cur_poisoned_pl_no][ds_id_list[key]] = min_robbery_val - alpha
 		for key, value in blocking.items():
-			print(key, value)
 			pls[cur_poisoned_pl_no][ds_id_list[key]] = value + alpha
 		if verbose:
 			print("poison", ["%.2f"%item for item in pls[cur_poisoned_pl_no]])
