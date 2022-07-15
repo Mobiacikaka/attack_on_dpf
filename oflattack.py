@@ -108,147 +108,6 @@ def gen_atkable(sim_arg, ds_id_list) -> list[bool]:
 	atkable_list.append(False)
 	return atkable_list
 
-def allocation(sim_arg, k, rklist, verbose=True):
-	eps_Global, N, NPB, pls = sim_arg
-
-	# rklist should be sorted
-	rklist.sort()
-	for rid in rklist:
-		pls.insert(rid, [alpha] * NPB)
-
-	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N)
-	for _ in range(NPB):
-		dpfsys.OnDataBlockCreation()
-
-	wp = {}
-	index = 0
-	while index < rklist[0]:
-		wp[index] = pls[index]
-		dpfsys.OnPipelineArrival(pls[index])
-		finished_pls = dpfsys.OnSchedulerTimer(wp)
-		if verbose:
-			print(f"TS{index}:\t", finished_pls)
-			print("eps_U:", ['%.2f'%item for item in dpfsys.eps_U])
-		index += 1
-
-	ds_id_list = gen_dominantshare_block_id_list(pls, N, NPB)
-	atkable_list = gen_atkable(sim_arg, ds_id_list)
-
-	robbery_list = []
-	blocking_list = []
-
-	def func_A(rklist_no):
-		nonlocal index, rklist
-		assert(index == rklist[rklist_no])
-		_dpfsys = copy.deepcopy(dpfsys)
-		_wp = copy.deepcopy(wp)
-		cur_poisoned_pl_no = rklist[rklist_no]
-		nxt_poisoned_pl_no = rklist[rklist_no+1]
-
-		robbery = {}
-		blocking = {}
-
-		# add basic robbery and blocking pl to dict
-		for i in range(N):
-			if atkable_list[i] == True and i not in _dpfsys.finish_pls_no:
-				if i > cur_poisoned_pl_no:
-					blocking[i] = 0
-
-		# calculate MIN value for blocking
-		# calculate MAX value for robbery
-		for i in range(cur_poisoned_pl_no, nxt_poisoned_pl_no):
-			_wp[i] = pls[i]
-			_dpfsys.OnPipelineArrival(pls[i])
-			finished = _dpfsys.OnSchedulerTimer(_wp)
-			if verbose:
-				print("pre_alloc:", finished)
-				print("eps_U:", ['%.2f'%item for item in _dpfsys.eps_U])
-				print("wp:", _wp.keys())
-			for pl in finished:
-				if atkable_list[pl] == True:
-					ds_id = ds_id_list[pl]
-					if pl < cur_poisoned_pl_no:
-						robbery[pl] = pls[pl][ds_id]
-					else:
-						if nxt_poisoned_pl_no == N-1:
-							blocking[pl] = dpfsys.eps_U[ds_id] + 3 * eps_Global/N - pls[pl][ds_id] # TODO
-						else:
-							blocking[pl] = dpfsys.eps_U[ds_id] + 2 * eps_Global/N - pls[pl][ds_id] # TODO
-
-		# in function A
-		def backtracking(rklist_no, poison_pl_ds_val, overload_value, benign_pl_no) -> bool:
-			if rklist_no == 0:
-				return False
-			prv_poisoned_pl_no = rklist[rklist_no-1]
-			ds_id = ds_id_list[benign_pl_no]
-			overload_delta = overload_value - poison_pl_ds_val
-			prv_min_robbery_val = min(robbery_list[rklist_no-1].values())
-			if pls[prv_poisoned_pl_no][ds_id] + overload_delta < prv_min_robbery_val:
-				pls[prv_poisoned_pl_no][ds_id] += overload_delta
-				dpfsys.eps_U[ds_id] -= overload_delta
-				blocking[benign_pl_no] = poison_pl_ds_val - alpha
-				return True
-			else:
-				assert(0)
-			assert(0)
-			return False
-
-		if verbose:
-			print("robbery:", robbery)
-			print("blocking:", blocking)
-		# clear unattackable robbery pipeline
-		while True:
-			if len(robbery) == 0:
-				break
-			min_robbery_key = min(robbery, key=robbery.get)
-			min_robbery_val = robbery.get(min_robbery_key)
-			flag = True
-			for key, value in blocking.items():
-				if value >= min_robbery_val:
-					assert(min_robbery_val != None)
-					flag = backtracking(rklist_no, min_robbery_val-alpha, value+alpha, key)
-					if not flag:
-						break
-			if flag == False:
-				assert(0)
-				robbery.pop(min_robbery_key)
-				atkable_list[min_robbery_key] = False
-			else:
-				break
-
-		robbery_list.append(robbery)
-		blocking_list.append(blocking)
-		if verbose:
-			print("robbery: ", robbery)
-			print("blocking: ", blocking)
-	
-		# fill in the blocks that need to be filled in
-		if len(robbery) > 0:
-			min_robbery_val = min(robbery.values())
-			for key, _ in robbery.items():
-				pls[cur_poisoned_pl_no][ds_id_list[key]] = min_robbery_val - alpha
-		for key, value in blocking.items():
-			pls[cur_poisoned_pl_no][ds_id_list[key]] = value + alpha
-		if verbose:
-			print("poison", ["%.2f"%item for item in pls[cur_poisoned_pl_no]])
-
-	def func_B(rklist_no):
-		pass
-
-	for rklist_no in range(len(rklist)):
-		print("\nFill in poisoned pipeline ", index)
-		if rklist_no != len(rklist)-1:
-			func_A(rklist_no)
-			# dpf add pipelines
-			for index in range(rklist[rklist_no], rklist[rklist_no+1]):
-				wp[index] = pls[index]
-				dpfsys.OnPipelineArrival(pls[index])
-				print(f"TS{index} finished: ", dpfsys.OnSchedulerTimer(wp))
-				print("eps_U:", ['%.2f'%item for item in dpfsys.eps_U])
-			index += 1
-		else:
-			func_B(rklist_no)
-
 def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 	eps_Global, N, NPB, pls = sim_arg
 
@@ -274,8 +133,12 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 	## when atkable_list change, go into loop again
 	## with all parameters restore.
 	def loop_alltimestamp(dpfsys: dpf.DPF, wp: dict, pls: list[list], unallocated_budget_list: list[list]):
+		poisoned_ds_list = {}
+
 		def timestamp(index: int, rklist_index: int):
-			poisoned_pl = pls[rklist[rklist_index]]
+			current_pl_index = rklist[rklist_index]
+			poisoned_pl = pls[current_pl_index]
+			atkable_flag = True
 
 			## Allocation
 			wp[index] = pls[index]
@@ -297,16 +160,46 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 					if not atkable_list[finished_pl]:
 						continue
 
+					## Set dominant share for the current pipeline
 					ds_index = ds_id_list[finished_pl]
+					if finished_pl < current_pl_index:
+						new_ds = pls[finished_pl][ds_index]
+						if poisoned_ds_list[current_pl_index] >= pls[new_ds]:
+							poisoned_ds_list[current_pl_index] = new_ds - alpha
+
 					## ATTACK
 					delta = dpfsys.eps_U[ds_index] + alpha
 					poisoned_pl[ds_index] += delta
+
+					## TODO: JUDGE poisoned_pl[ds_index] legal or not
+					def backtracking(rklist_index, ds_index, prv_index, delta):
+						bt_pl_index = rklist[rklist_index] # in backtracking
+						for index_ in range(bt_pl_index, prv_index):
+							unallocated_budget_list[index_][ds_index] -= delta
+						pl = pls[bt_pl_index]
+						delta = pl[ds_index] - poisoned_ds_list[bt_pl_index]
+						if delta <= 0:
+							return True
+						if rklist_index == 0:
+							assert(0)
+						else:
+							pls[rklist[rklist_index-1]][ds_index] += delta
+							return backtracking(rklist_index-1, ds_index, bt_pl_index, delta)
+						return False
+					if backtracking(rklist_index, ds_index, index, delta) == False:
+						atkable_flag = False
+						break
 
 					## Adjust dpfsys and wp
 					dpfsys.deComplete(wp, pls[finished_pl], finished_pl)
 					dpfsys.eps_U[ds_index] -= delta
 
-			return True
+				## Exit loop condition
+				if not atkable_flag:
+					break
+
+			unallocated_budget_list.append(copy.deepcopy(dpfsys.eps_U))
+			return atkable_flag
 
 		rklist_index = -1
 		for index in range(rklist[0], N):
@@ -335,4 +228,4 @@ if __name__ == '__main__':
 	pls = benign_pls
 	sim_arg = eps_Global, N, NPB, pls
 	rklist = list(range(N-2*k+1, N, 2))
-	allocation2(sim_arg, k, rklist)
+	allocation2(sim_arg, rklist)
