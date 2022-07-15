@@ -96,8 +96,17 @@ def Simulation(sim_arg: tuple, verbose: bool=True) -> list[int]:
 		dpf.OnPipelineArrival(pls[i])
 		finished_pls = dpf.OnSchedulerTimer(wp)
 		if verbose:
-			print(f"TS\t{i}:\t", finished_pls)
+			print(f"TS{i}:\t", finished_pls)
 
 	if verbose:
 		print("finish_sum", ["%.2f"%item for item in dpf.finish_sum])
 	return dpf.finish_pls_no
+
+def pre_Allocation_one(dpf: DPF, wp: dict, pls: list[list], i: int, verbose: bool=False):
+	wp[i] = pls[i]
+	dpf.OnPipelineArrival(pls[i])
+	finished_pls = dpf.OnSchedulerTimer(wp)
+	if verbose:
+		print(f"TS{i}:\t", finished_pls)
+	return dpf, wp, finished_pls
+
