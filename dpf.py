@@ -11,8 +11,7 @@ class DPF:
 		self.eps_U = [] # unlocked budget
 		self.eps_A = [] # allocated budget
 		self.eps_C = [] # consume budget
-		self.finish_pls_no = []
-		self.finish_sum = []
+		self.complete_pl_list = []
 		for _ in range(NPB):
 			self.OnDataBlockCreation()
 
@@ -21,7 +20,6 @@ class DPF:
 		self.eps_U.append(0)
 		self.eps_A.append(0)
 		self.eps_C.append(0)
-		self.finish_sum.append(0)
 		self.NPB += 1
 
 	def OnPipelineArrival(self, pl: list[int|float]) -> None:
@@ -45,11 +43,10 @@ class DPF:
 					for j in range(self.NPB):
 						self.eps_C[j] += d_i[j]
 						self.eps_A[j] -= d_i[j]
-					assert(seq not in self.finish_pls_no)
+					assert(seq not in self.complete_pl_list)
 					wp.pop(seq)
-					self.finish_pls_no.append(seq)
+					self.complete_pl_list.append(seq)
 					finished.append(seq)
-					self.finish_sum = [self.finish_sum[l]+d_i[l] for l in range(self.NPB)]
 				else:
 					for j in range(self.NPB):
 						self.eps_U[j] += d_i[j]
@@ -85,6 +82,16 @@ class DPF:
 		for j in range(self.NPB):
 			self.eps_U[j] -= d_i[j]
 			self.eps_A[j] += d_i[j]
+	
+	## Remove completed pipeline from completed list
+	def deComplete(self, wp: dict, d_i: list[float], seq) -> None:
+		for j in range(self.NPB):
+			self.eps_U[j] += d_i[j]
+			self.eps_C[j] -= d_i[j]
+		self.complete_pl_list.remove(seq)
+		## Add pipeline to wp
+		wp[seq] = d_i
+		## Because budget has already allocated, no more will be released
 
 def Simulation(sim_arg: tuple, verbose: bool=True) -> list[int]:
 	eps_Global, N, NPB, pls = sim_arg
@@ -97,8 +104,8 @@ def Simulation(sim_arg: tuple, verbose: bool=True) -> list[int]:
 		pre_Allocation_one(dpf, wp, pls, i, verbose)
 
 	if verbose:
-		print("finish_sum", ["%.2f"%item for item in dpf.finish_sum])
-	return dpf.finish_pls_no
+		print("finish_sum", ["%.2f"%item for item in dpf.eps_C])
+	return dpf.complete_pl_list
 
 def pre_Allocation_one(dpf: DPF, wp: dict, pls: list[list], i: int, verbose: bool=False):
 	wp[i] = pls[i]
