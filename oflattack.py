@@ -275,23 +275,38 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 	## with all parameters restore.
 	def loop_alltimestamp(dpfsys: dpf.DPF, wp: dict, pls: list[list], unallocated_budget_list: list[list]):
 		def timestamp(index: int, rklist_index: int):
-			def loop_onetimestamp(index: int, rklist_index: int)
-				cur_poisoned_pl_no = rklist[rklist_index]
-				poisoned_pl = pls[cur_poisoned_pl_no]
-				dpfsys_new, _, finished_pls = \
-					dpf.pre_Allocation_one(copy.deepcopy(dpfsys), copy.deepcopy(wp), pls, index)
-				unallocated_budget = copy.deepcopy(dpfsys_new.eps_U)
-				unallocated_budget_list.append(unallocated_budget)
+			poisoned_pl = pls[rklist[rklist_index]]
+
+			## Allocation
+			wp[index] = pls[index]
+			dpfsys.OnPipelineArrival(pls[index])
+			while True:
+				## Allocation
+				finished_pls = dpfsys.OnSchedulerTimer(wp)
+
+				## Exit condition
+				flag = True
+				for finished_pl in finished_pls:
+					if atkable_list[finished_pl] == True:
+						flag = False
+				if flag:
+					break
+
+				## Apply attack
 				for finished_pl in finished_pls:
 					if not atkable_list[finished_pl]:
 						continue
+
 					ds_index = ds_id_list[finished_pl]
-					ds_value = pls[finished_pl][ds_index]
-					poisoned_pl[ds_index] += unallocated_budget[ds_index] + alpha
-					unallocated_budget = [unallocated_budget[j] + pls[finished_pl][j] for j in range(NPB)]
-					unallocated_budget[ds_index] -= (poisoned_pl[ds_index] - alpha)
-				return True
-			assert(0)
+					## ATTACK
+					delta = dpfsys.eps_U[ds_index] + alpha
+					poisoned_pl[ds_index] += delta
+
+					## Adjust dpfsys and wp
+					dpfsys.deComplete(wp, pls[finished_pl], finished_pl)
+					dpfsys.eps_U[ds_index] -= delta
+
+			return True
 
 		rklist_index = -1
 		for index in range(rklist[0], N):
@@ -320,12 +335,4 @@ if __name__ == '__main__':
 	pls = benign_pls
 	sim_arg = eps_Global, N, NPB, pls
 	rklist = list(range(N-2*k+1, N, 2))
-	allocation(sim_arg, k, rklist)
-	# eps_U_list = return_eps_U_list(sim_arg)
-	# finish_num = len(dpf.Simulation(sim_arg))
-	# for i in range(N):
-	# 	print(['%.2f'%item for item in pls[i]])
-	# print()
-	# for i in range(N):
-	# 	print(['%.2f'%item for item in eps_U_list[i]])
-	# print("finish_num: ", finish_num)
+	allocation2(sim_arg, k, rklist)
