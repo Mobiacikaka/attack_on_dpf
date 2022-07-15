@@ -84,7 +84,7 @@ class DPF:
 			self.eps_U[j] -= d_i[j]
 			self.eps_A[j] += d_i[j]
 
-def Simulation(sim_arg: tuple) -> list[int]:
+def Simulation(sim_arg: tuple, verbose: bool=True) -> list[int]:
 	eps_Global, N, NPB, pls = sim_arg
 	dpf = DPF(eps_Global=eps_Global, N=N)
 	for _ in range(NPB):
@@ -94,7 +94,10 @@ def Simulation(sim_arg: tuple) -> list[int]:
 	for i in range(len(pls)):
 		wp[i] = pls[i]
 		dpf.OnPipelineArrival(pls[i])
-		print(dpf.OnSchedulerTimer(wp))
+		finished_pls = dpf.OnSchedulerTimer(wp)
+		if verbose:
+			print(f"TS\t{i}:\t", finished_pls)
 
-	print("finish_sum", ["%.2f"%item for item in dpf.finish_sum])
+	if verbose:
+		print("finish_sum", ["%.2f"%item for item in dpf.finish_sum])
 	return dpf.finish_pls_no
