@@ -3,7 +3,7 @@
 from typing import Sequence
 
 class DPF:
-	def __init__(self, eps_Global: float=5.0, N=5):
+	def __init__(self, eps_Global: float=5.0, N: int=5, NPB: int=0):
 		self.eps_Global = eps_Global
 		self.NPB = 0	# number of privacy block
 		self.N = N # first N pipelines
@@ -13,6 +13,8 @@ class DPF:
 		self.eps_C = [] # consume budget
 		self.finish_pls_no = []
 		self.finish_sum = []
+		for _ in range(NPB):
+			self.OnDataBlockCreation()
 
 	def OnDataBlockCreation(self) -> None:
 		self.eps_G.append(self.eps_Global)
@@ -92,11 +94,7 @@ def Simulation(sim_arg: tuple, verbose: bool=True) -> list[int]:
 	
 	wp = {} # waiting pipelines
 	for i in range(len(pls)):
-		wp[i] = pls[i]
-		dpf.OnPipelineArrival(pls[i])
-		finished_pls = dpf.OnSchedulerTimer(wp)
-		if verbose:
-			print(f"TS{i}:\t", finished_pls)
+		pre_Allocation_one(dpf, wp, pls, i, verbose)
 
 	if verbose:
 		print("finish_sum", ["%.2f"%item for item in dpf.finish_sum])
