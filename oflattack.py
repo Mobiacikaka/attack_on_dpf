@@ -120,8 +120,8 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 	dpfsys = dpf.DPF(eps_Global, N, NPB)
 	wp = {}
 	unallocated_budget_list = []
-	for i in range(rklist[0]):
-		dpf.pre_Allocation_one(dpfsys, wp, pls, i, verbose)
+	for ts in range(rklist[0]):
+		dpf.pre_Allocation_one(dpfsys, wp, pls, ts, verbose)
 		unallocated_budget_list.append(copy.deepcopy(dpfsys.eps_U))
 
 	## get block id number for every pipeline's Dominant Share
@@ -133,16 +133,20 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 	## when atkable_list change, go into loop again
 	## with all parameters restore.
 	def loop_alltimestamp(dpfsys: dpf.DPF, wp: dict, pls: list[list], unallocated_budget_list: list[list]):
-		poisoned_ds_list = {}
+		## list of tuple(v1, v2, v3)
+		## \param v1 pipeline row index
+		##				v2 pipeline dominant share block index
+		##				v3 dominant share value - alpha
+		poisoned_ds_list: list[tuple[int, int, float]] = [(-1, -1, 0)] * 3
 
-		def timestamp(index: int, rklist_index: int):
-			current_pl_index = rklist[rklist_index]
-			poisoned_pl = pls[current_pl_index]
+		def timestamp(ts: int, rklist_index: int):
+			pointer_pl_index = rklist[rklist_index]
+			poisoned_pl = pls[pointer_pl_index]
 			atkable_flag = True
 
 			## Allocation
-			wp[index] = pls[index]
-			dpfsys.OnPipelineArrival(pls[index])
+			wp[ts] = pls[ts]
+			dpfsys.OnPipelineArrival(pls[ts])
 			while True:
 				## Allocation
 				finished_pls = dpfsys.OnSchedulerTimer(wp)
@@ -156,43 +160,55 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 					break
 
 				## Apply attack
-				for finished_pl in finished_pls:
+				for finished_pl in reversed(finished_pls):
 					if not atkable_list[finished_pl]:
 						continue
 
 					## Set dominant share for the current pipeline
 					ds_index = ds_id_list[finished_pl]
-					if finished_pl < current_pl_index:
-						new_ds = pls[finished_pl][ds_index]
-						if poisoned_ds_list[current_pl_index] >= pls[new_ds]:
-							poisoned_ds_list[current_pl_index] = new_ds - alpha
+					if finished_pl < pointer_pl_index:
+						new_ds_value = pls[finished_pl][ds_index] - alpha
+						old_pl_index, _, old_ds_value = poisoned_ds_list[rklist_index]
+						if old_pl_index != -1 or old_ds_value > new_ds_value:
+							poisoned_ds_list[rklist_index] = finished_pl, ds_index, new_ds_value
 
 					## ATTACK
 					delta = dpfsys.eps_U[ds_index] + alpha
 					poisoned_pl[ds_index] += delta
 
-					## TODO: JUDGE poisoned_pl[ds_index] legal or not
-					def backtracking(rklist_index, ds_index, prv_index, delta):
-						bt_pl_index = rklist[rklist_index] # in backtracking
-						for index_ in range(bt_pl_index, prv_index):
-							unallocated_budget_list[index_][ds_index] -= delta
-						pl = pls[bt_pl_index]
-						delta = pl[ds_index] - poisoned_ds_list[bt_pl_index]
-						if delta <= 0:
-							return True
-						if rklist_index == 0:
-							assert(0)
-						else:
-							pls[rklist[rklist_index-1]][ds_index] += delta
-							return backtracking(rklist_index-1, ds_index, bt_pl_index, delta)
-						return False
-					if backtracking(rklist_index, ds_index, index, delta) == False:
-						atkable_flag = False
-						break
-
 					## Adjust dpfsys and wp
 					dpfsys.deComplete(wp, pls[finished_pl], finished_pl)
 					dpfsys.eps_U[ds_index] -= delta
+
+					## TODO: JUDGE poisoned_pl[ds_index] legal or not
+					def backtracking(_rklist_index: int, _ds_index: int, _prv_pl_index: int, _delta: float):
+						## add delta to the poisoned pipeline
+						_cur_pl_index = rklist[_rklist_index]
+						pls[_cur_pl_index][_ds_index] += _delta
+
+						## change the history budget record
+						for _ts in range(_cur_pl_index, _prv_pl_index):
+							unallocated_budget_list[_ts][_ds_index] -= _delta
+
+						## JUDGE if the value has exceed its limit
+						## get dominant share of the pipeline _cur_pl_index
+						_track_pl_index, _track_db_index, _track_ds_value = poisoned_ds_list[_rklist_index]
+
+						## compare dominant share value with unallocated budget
+						_cmp_value = 0
+						if _track_ds_value > unallocated_budget_list[_cur_pl_index][_ds_index]:
+							_cmp_value = unallocated_budget_list[_cur_pl_index][_ds_index]
+						else:
+							_cmp_value = _track_ds_value
+
+						## Return True if demand is below the limit
+						if pls[_cur_pl_index][_ds_index] < _cmp_value:
+							return True
+
+						assert(0)
+					if backtracking(rklist_index, ds_index, ts, delta) == False:
+						atkable_flag = False
+						break
 
 				## Exit loop condition
 				if not atkable_flag:
@@ -202,13 +218,15 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 			return atkable_flag
 
 		rklist_index = -1
-		for index in range(rklist[0], N):
-			if index in rklist:
+		for ts in range(rklist[0], N):
+			if ts in rklist:
 				rklist_index += 1
-				assert(index == rklist[rklist_index])
-			flag = timestamp(index, rklist_index)
+				assert(ts == rklist[rklist_index])
+			flag = timestamp(ts, rklist_index)
 			if flag == False:
 				return False, []
+		for pl in pls:
+			print(["%.2f"%d for d in pl])
 		return True, pls
 	
 	while True:
