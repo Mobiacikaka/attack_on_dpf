@@ -164,10 +164,8 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 			## compare dominant share value with unallocated budget
 			_cmp_value = 0
 			if _track_ds_value > _budget:
-				print("budget limitation", _budget)
 				_cmp_value = _budget
 			else:
-				print("dominant share limitation", _track_ds_value)
 				_cmp_value = _track_ds_value
 
 			## change the history budget record
@@ -187,7 +185,6 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 			## Limit exceeds, cannot fill in anymore
 			elif _rklist_index == 0:
 				pls[_cur_pl_index][_ds_index] = _cmp_value
-				print("_cmp_value", _cmp_value)
 				return False
 
 			assert(0)
@@ -247,6 +244,8 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 					break
 
 			## fill in the last attack pipeline
+			## the final result should sub a small number
+			## for the compensation of caculation
 			if atkable_flag and ts == N-1:
 				for bid in range(NPB):
 					if pls[ts][bid] > alpha:
@@ -254,9 +253,9 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 						if not flag:
 							pls[ts][bid] = 0
 						else:
-							pls[ts][bid] = dpfsys.eps_U[bid]
+							pls[ts][bid] = dpfsys.eps_U[bid] - alpha
 					else:
-						pls[ts][bid] += dpfsys.eps_U[bid]
+						pls[ts][bid] += dpfsys.eps_U[bid] - alpha
 
 			unallocated_budget_list.pop()
 			unallocated_budget_list.append(copy.deepcopy(dpfsys.eps_U))
@@ -281,12 +280,15 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 			copy.deepcopy(pls), 
 			copy.deepcopy(unallocated_budget_list)
 		)
-		print("\nPring pipelines")
-		for new_pl in new_pls:
-			print(["%.2f"%d for d in new_pl])
+		if verbose:
+			print("\nPring pipelines")
+			for new_pl in new_pls:
+				print(["%.2f"%d for d in new_pl])
 		if flag == True:
 			pls = new_pls
 			break
+	
+	return pls
 
 if __name__ == '__main__':
 	eps_Global, N, NPB, benign_pls = readdata()
@@ -294,4 +296,6 @@ if __name__ == '__main__':
 	pls = benign_pls
 	sim_arg = eps_Global, N, NPB, pls
 	rklist = list(range(N-2*k+1, N, 2))
-	allocation2(sim_arg, rklist)
+	pls = allocation2(sim_arg, rklist, False)
+	sim_arg = eps_Global, N, NPB, pls
+	print(dpf.Simulation(sim_arg))
