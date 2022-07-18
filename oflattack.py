@@ -5,6 +5,7 @@ import ipdb
 import random
 import dpf
 import copy
+import chooseK as ck
 
 alpha = 0.01
 k = 3
@@ -96,17 +97,13 @@ def gen_dominantshare_block_id_list(pls, N, NPB) -> list:
 	return ds_id_list
 
 def gen_atkable(sim_arg, ds_id_list) -> list[bool]:
-	eps_Global, N, NPB, pls = sim_arg
+	eps_Global, N, _, pls = sim_arg
 	atkable_list = []
-	step = eps_Global / N
-	for i in range(N-2): # what if there is no poisoned pipeline in the end
-		if pls[i][ds_id_list[i]] > 2*step:
+	for i in range(N): # what if there is no poisoned pipeline in the end
+		if pls[i][ds_id_list[i]] > eps_Global / N:
 			atkable_list.append(True)
 		else:
 			atkable_list.append(False)
-	if pls[N-2][ds_id_list[N-2]] > step:
-		atkable_list.append(True)
-	atkable_list.append(False)
 	return atkable_list
 
 def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
@@ -274,7 +271,7 @@ def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 		if verbose:
 			print("\nPring pipelines")
 			for no in range(N):
-				print(["%.2f"%d for d in pls[no]])
+				print(["%.2f"%d for d in new_pls[no]])
 		if flag == True:
 			pls = new_pls
 			break
@@ -290,3 +287,4 @@ if __name__ == '__main__':
 	pls = allocation(sim_arg, rklist, True)
 	sim_arg = eps_Global, N, NPB, pls
 	print(dpf.Simulation(sim_arg))
+	print(["%.2f"%sum([pls[rid][bid] for rid in rklist]) for bid in range(NPB)])
