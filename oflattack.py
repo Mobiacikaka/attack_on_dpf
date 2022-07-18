@@ -148,6 +148,7 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 			## Allocation
 			wp[ts] = pls[ts]
 			dpfsys.OnPipelineArrival(pls[ts])
+			unallocated_budget_list.append(dpfsys.eps_U)
 			while True:
 				## Allocation
 				finished_pls = dpfsys.OnSchedulerTimer(wp)
@@ -179,19 +180,15 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 					## Adjust dpfsys and wp
 					dpfsys.deComplete(wp, pls[finished_pl], finished_pl)
 					dpfsys.eps_U[ds_index] -= delta
-					unallocated_budget_list.append(dpfsys.eps_U)
 
 					## TODO: JUDGE poisoned_pl[ds_index] legal or not
 					def backtracking(_rklist_index: int, _ds_index: int, _prv_pl_index: int, _delta: float):
 						if verbose:
 							print("backtracking(", rklist_index, ds_index, ts, "%.2f"%delta, ")")
+
 						## add delta to the poisoned pipeline
 						_cur_pl_index = rklist[_rklist_index]
 						pls[_cur_pl_index][_ds_index] += _delta
-
-						## change the history budget record
-						for _ts in range(_cur_pl_index, _prv_pl_index):
-							unallocated_budget_list[_ts][_ds_index] -= _delta
 
 						if verbose:
 							print(_cur_pl_index, ["%.2f"%item for item in pls[_cur_pl_index]])
@@ -206,12 +203,16 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 
 						## compare dominant share value with unallocated budget
 						_cmp_value = 0
-						# if _track_ds_value > unallocated_budget_list[_cur_pl_index][_ds_index]:
-						# 	print("budget limitation")
-						# 	_cmp_value = unallocated_budget_list[_cur_pl_index][_ds_index]
-						# else:
-						# 	print("dominant share limitation")
-						_cmp_value = _track_ds_value
+						if _track_ds_value > unallocated_budget_list[_cur_pl_index][_ds_index]:
+							print("budget limitation")
+							_cmp_value = unallocated_budget_list[_cur_pl_index][_ds_index]
+						else:
+							print("dominant share limitation")
+							_cmp_value = _track_ds_value
+
+						## change the history budget record
+						for _ts in range(_cur_pl_index, _prv_pl_index):
+							unallocated_budget_list[_ts][_ds_index] -= _delta
 
 						## Return True if demand is below the limit
 						if pls[_cur_pl_index][_ds_index] <= _cmp_value:
@@ -238,12 +239,12 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 						atkable_list[old_pl_index] = False
 						print("Allocation Failed!")
 						break
-					unallocated_budget_list.pop()
 
 				## Exit loop condition
 				if not atkable_flag:
 					break
 
+			unallocated_budget_list.pop()
 			unallocated_budget_list.append(copy.deepcopy(dpfsys.eps_U))
 			return atkable_flag
 
