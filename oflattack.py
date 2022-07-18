@@ -109,7 +109,7 @@ def gen_atkable(sim_arg, ds_id_list) -> list[bool]:
 	atkable_list.append(False)
 	return atkable_list
 
-def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
+def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 	eps_Global, N, NPB, pls = sim_arg
 
 	## Insertion
@@ -138,7 +138,7 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 		## \param v1 pipeline row index
 		##				v2 pipeline dominant share block index
 		##				v3 dominant share value - alpha
-		poisoned_ds_list: list[tuple[int, int, float]] = [(-1, -1, 0)] * 3
+		poisoned_ds_list: list[tuple[int, int, float]] = [(-1, -1, eps_Global)] * NPB
 
 		def backtracking(_rklist_index: int, _ds_index: int, _prv_pl_index: int, _delta: float):
 			if verbose:
@@ -157,8 +157,7 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 
 			## JUDGE if the value has exceed its limit
 			## get dominant share of the pipeline _cur_pl_index
-			_track_pl_index, _track_db_index, _track_ds_value = poisoned_ds_list[_rklist_index]
-			assert(_track_pl_index != -1 and _track_db_index != -1)
+			_, _, _track_ds_value = poisoned_ds_list[_rklist_index]
 
 			## compare dominant share value with unallocated budget
 			_cmp_value = 0
@@ -168,9 +167,9 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 				_cmp_value = _track_ds_value
 
 			## change the history budget record
-			for _ts in range(_cur_pl_index, _prv_pl_index):
+			for _ts in range(_cur_pl_index+1, _prv_pl_index):
 				unallocated_budget_list[_ts][_ds_index] -= _delta
-				assert(unallocated_budget_list[_ts][_ds_index] > 0)
+				assert(unallocated_budget_list[_ts][_ds_index] >= 0)
 
 			## Return True if demand is below the limit
 			if pls[_cur_pl_index][_ds_index] <= _cmp_value:
@@ -238,6 +237,9 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 			## for the compensation of caculation
 			if atkable_flag and ts == N-1:
 				for bid in range(NPB):
+					if dpfsys.eps_U[bid] <= 2 * eps_Global / N:
+						pls[ts][bid] = 0
+						continue
 					if pls[ts][bid] > alpha:
 						flag = backtracking(k-2, bid, ts, pls[ts][bid])
 						if not flag:
@@ -271,8 +273,8 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 		)
 		if verbose:
 			print("\nPring pipelines")
-			for new_pl in new_pls:
-				print(["%.2f"%d for d in new_pl])
+			for no in range(N):
+				print(["%.2f"%d for d in pls[no]])
 		if flag == True:
 			pls = new_pls
 			break
@@ -280,11 +282,11 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 	return pls
 
 if __name__ == '__main__':
-	eps_Global, N, NPB, benign_pls = readdata()
+	eps_Global, N, NPB, benign_pls = gendata()
 
 	pls = benign_pls
 	sim_arg = eps_Global, N, NPB, pls
 	rklist = list(range(N-2*k+1, N, 2))
-	pls = allocation2(sim_arg, rklist, False)
+	pls = allocation(sim_arg, rklist, True)
 	sim_arg = eps_Global, N, NPB, pls
 	print(dpf.Simulation(sim_arg))
