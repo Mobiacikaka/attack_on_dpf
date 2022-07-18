@@ -140,7 +140,6 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 		##				v3 dominant share value - alpha
 		poisoned_ds_list: list[tuple[int, int, float]] = [(-1, -1, 0)] * 3
 
-		## TODO: JUDGE poisoned_pl[ds_index] legal or not
 		def backtracking(_rklist_index: int, _ds_index: int, _prv_pl_index: int, _delta: float):
 			if verbose:
 				print("backtracking(", _rklist_index, _ds_index, _prv_pl_index, "%.2f"%_delta, ")")
@@ -198,16 +197,7 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 			dpfsys.OnPipelineArrival(pls[ts])
 			unallocated_budget_list.append(dpfsys.eps_U)
 			while True:
-				## Allocation
 				finished_pls = dpfsys.OnSchedulerTimer(wp)
-
-				## Exit condition
-				flag = True
-				for finished_pl in finished_pls:
-					if atkable_list[finished_pl] == True:
-						flag = False
-				if flag:
-					break
 
 				## Apply attack
 				for finished_pl in reversed(finished_pls):
@@ -240,7 +230,7 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 						break
 
 				## Exit loop condition
-				if not atkable_flag:
+				if not atkable_flag or len(finished_pls) == 0:
 					break
 
 			## fill in the last attack pipeline
@@ -270,10 +260,9 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 			if flag == False:
 				return False, pls
 		return True, pls
+	## End of loop_alltimestamp
 	
-	count = 0
-	while count < 1:
-		count += 1
+	while True:
 		flag, new_pls = loop_alltimestamp(
 			copy.deepcopy(dpfsys), 
 			copy.deepcopy(wp), 
