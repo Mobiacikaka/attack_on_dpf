@@ -142,7 +142,6 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 
 		def timestamp(ts: int, rklist_index: int):
 			pointer_pl_index = rklist[rklist_index]
-			poisoned_pl = pls[pointer_pl_index]
 			atkable_flag = True
 
 			## Allocation
@@ -188,6 +187,7 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 
 						## add delta to the poisoned pipeline
 						_cur_pl_index = rklist[_rklist_index]
+						_budget = unallocated_budget_list[_cur_pl_index][_ds_index] + pls[_cur_pl_index][_ds_index]
 						pls[_cur_pl_index][_ds_index] += _delta
 
 						if verbose:
@@ -199,20 +199,21 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 						## JUDGE if the value has exceed its limit
 						## get dominant share of the pipeline _cur_pl_index
 						_track_pl_index, _track_db_index, _track_ds_value = poisoned_ds_list[_rklist_index]
-						assert(_track_pl_index != -1)
+						assert(_track_pl_index != -1 and _track_db_index != -1)
 
 						## compare dominant share value with unallocated budget
 						_cmp_value = 0
-						if _track_ds_value > unallocated_budget_list[_cur_pl_index][_ds_index]:
-							print("budget limitation")
-							_cmp_value = unallocated_budget_list[_cur_pl_index][_ds_index]
+						if _track_ds_value > _budget:
+							print("budget limitation", _budget)
+							_cmp_value = _budget
 						else:
-							print("dominant share limitation")
+							print("dominant share limitation", _track_ds_value)
 							_cmp_value = _track_ds_value
 
 						## change the history budget record
 						for _ts in range(_cur_pl_index, _prv_pl_index):
 							unallocated_budget_list[_ts][_ds_index] -= _delta
+							assert(unallocated_budget_list[_ts][_ds_index] > 0)
 
 						## Return True if demand is below the limit
 						if pls[_cur_pl_index][_ds_index] <= _cmp_value:
@@ -225,6 +226,7 @@ def allocation2(sim_arg: tuple, rklist: list[int], verbose=True):
 							return backtracking(_rklist_index-1, _ds_index, _cur_pl_index, _delta)
 						## Limit exceeds, cannot fill in anymore
 						elif _rklist_index == 0:
+							pls[_cur_pl_index][_ds_index] = _cmp_value
 							print("_cmp_value", _cmp_value)
 							return False
 
