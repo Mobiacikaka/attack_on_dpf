@@ -72,8 +72,13 @@ class DPF:
 
 	def CanRun(self, d_i: Sequence[float]) -> bool:
 		flag = True
+		import struct
+		def double_to_hex(f):
+			return hex(struct.unpack('<Q', struct.pack('<d', f))[0])
 		for j in range(self.NPB):
-			if d_i[j] > self.eps_U[j]:
+			a = int(double_to_hex(d_i[j]), 16)
+			b = int(double_to_hex(self.eps_U[j]), 16)
+			if a >> 4 > b >> 4:
 				flag = False
 				break
 		return flag
@@ -112,6 +117,7 @@ def pre_Allocation_one(dpf: DPF, wp: dict, pls: list[list], i: int, verbose: boo
 	dpf.OnPipelineArrival(pls[i])
 	finished_pls = dpf.OnSchedulerTimer(wp)
 	if verbose:
+		print(f"TS{i}:\t", ['%.2f'%u for u in dpf.eps_U])
 		print(f"TS{i}:\t", finished_pls)
 	return dpf, wp, finished_pls
 
