@@ -78,13 +78,13 @@ def gendata() -> tuple:
 	return eps_Global, N, NPB, benign_pls
 
 def readdata() -> tuple[float, int, int, list[list[int|float]]]:
-	pls_file = open('/tmp/benign_pls')
+	pls_file = open('/tmp/benign_pls.csv')
 	lines = pls_file.readlines()
 	benign_pls = []
 	for line in lines:
 		line = line.replace('\n', '')
 		benign_pls.append([float(item) for item in line.split("\t")])
-	return 10.0, 10, 10, benign_pls
+	return 30.0, 30, 10, benign_pls
 
 def gen_dominantshare_block_id_list(pls, N, NPB) -> list:
 	ds_id_list = []
@@ -244,7 +244,7 @@ def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 						else:
 							pls[ts][bid] = dpfsys.eps_U[bid] - alpha
 					else:
-						pls[ts][bid] += dpfsys.eps_U[bid] - alpha
+						pls[ts][bid] = dpfsys.eps_U[bid]
 
 			unallocated_budget_list.pop()
 			unallocated_budget_list.append(copy.deepcopy(dpfsys.eps_U))
@@ -279,12 +279,12 @@ def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 	return pls
 
 if __name__ == '__main__':
-	eps_Global, N, NPB, benign_pls = gendata()
+	eps_Global, N, NPB, benign_pls = readdata()
 
 	pls = benign_pls
 	sim_arg = eps_Global, N, NPB, pls
-	rklist = list(range(N-2*k+1, N, 2))
-	pls = allocation(sim_arg, rklist, True)
-	sim_arg = eps_Global, N, NPB, pls
+	# rklist = list(range(N-2*k+1, N, 2))
+	# pls = allocation(sim_arg, rklist, True)
+	# sim_arg = eps_Global, N, NPB, pls
 	print(dpf.Simulation(sim_arg))
-	print(["%.2f"%sum([pls[rid][bid] for rid in rklist]) for bid in range(NPB)])
+	# print(["%.2f"%sum([pls[rid][bid] for rid in rklist]) for bid in range(NPB)])
