@@ -109,18 +109,18 @@ def Simulation(sim_arg: tuple, verbose: bool=True) -> list[int]:
 	eps_Global, N, NPB, pls = sim_arg
 	dpf = DPF(eps_Global=eps_Global, N=N, NPB=NPB)
 
-	for i in range(len(pls)):
-		pre_Allocation_one(dpf, pls, i, verbose)
+	for pl in pls:
+		pre_Allocation_one(dpf, pl, verbose)
 
 	if verbose:
 		print("finish_sum", ["%.2f"%item for item in dpf.eps_C])
 	return dpf.complete_pl_list
 
-def pre_Allocation_one(dpf: DPF, pls: list[list], i: int, verbose: bool=False):
-	dpf.OnPipelineArrival(pls[i])
+def pre_Allocation_one(dpf: DPF, pl, verbose: bool=False):
+	dpf.OnPipelineArrival(pl)
 	finished_pls = dpf.OnSchedulerTimer()
 	if verbose:
-		print(f"{i+1}  ", ['%.2f'%u for u in dpf.eps_U])
-		print(f"{i+1}  ", finished_pls)
+		print(f"{dpf.timestamp+1}  ", ['%.2f'%u for u in dpf.eps_U])
+		print(f"{dpf.timestamp+1}  ", finished_pls)
 	return dpf, finished_pls
 
