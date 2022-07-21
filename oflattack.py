@@ -8,64 +8,19 @@ import copy
 import chooseK as ck
 
 alpha = 0.01
-k = 3
 
 def return_eps_U_list(sim_arg: tuple) -> list[list[float]]:
 	eps_Global, N, NPB, benign_pls = sim_arg
-	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N)
-	for _ in range(NPB):
-		dpfsys.OnDataBlockCreation()
-	wp = {}
+	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
 	eps_U_list = []
 
 	# Simulation
 	for i in range(len(benign_pls)):
-		wp[i] = benign_pls[i]
 		dpfsys.OnPipelineArrival(benign_pls[i])
-		dpfsys.OnSchedulerTimer(wp)
+		dpfsys.OnSchedulerTimer()
 		eps_U_list.append(copy.deepcopy(dpfsys.eps_U))
 
 	return eps_U_list
-
-def brute_force_with_kinsert(sim_arg: tuple, k: int) -> tuple:
-	eps_Global, N, NPB, benign_pls = sim_arg
-
-	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N)
-	for _ in range(NPB):
-		dpfsys.OnDataBlockCreation()
-	wp = {}
-	maxeps_U = []
-	maxindex = 0
-
-	def pre_allocation(dpfsys: dpf.DPF, wp: dict, k: int, index: int) -> list[float]:
-		for i in range(k):
-			pl = [alpha] * dpfsys.NPB
-			wp[index] = pl
-			index += 1
-			dpfsys.OnPipelineArrival(pl)
-			dpfsys.OnSchedulerTimer(wp)
-		return dpfsys.eps_U
-
-	# Simulation
-	for i in range(len(benign_pls)):
-		cureps_U = pre_allocation(copy.deepcopy(dpfsys), copy.deepcopy(wp), k, i)
-		if sum(cureps_U) > sum(maxeps_U):
-			maxeps_U = cureps_U
-			maxindex = i
-		wp[i] = benign_pls[i]
-		dpfsys.OnPipelineArrival(benign_pls[i])
-		dpfsys.OnSchedulerTimer(wp)
-
-	pls = benign_pls
-	poison_pls_no = []
-	# insert poison pipelines
-	for i in list(range(k-1)):
-		pls.insert(maxindex + i, [alpha] * NPB)
-		poison_pls_no.append(maxindex + i)
-	pls.insert(maxindex + k-1, maxeps_U)
-	poison_pls_no.append(maxindex + k-1)
-
-	return pls, poison_pls_no
 
 def gendata() -> tuple:
 	eps_Global	= 10.0
@@ -78,7 +33,7 @@ def gendata() -> tuple:
 	return eps_Global, N, NPB, benign_pls
 
 def readdata() -> tuple[float, int, int, list[list[int|float]]]:
-	pls_file = open('/tmp/benign_pls.csv')
+	pls_file = open('benign_pls.csv')
 	lines = pls_file.readlines()
 	benign_pls = []
 	for line in lines:
@@ -106,7 +61,7 @@ def gen_atkable(sim_arg, ds_id_list) -> list[bool]:
 			atkable_list.append(False)
 	return atkable_list
 
-def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
+def allocation(sim_arg: tuple, rklist: list[int], K: int=3, verbose=True):
 	eps_Global, N, NPB, pls = sim_arg
 
 	## Insertion
@@ -119,7 +74,7 @@ def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 	wp = {}
 	unallocated_budget_list = []
 	for ts in range(rklist[0]):
-		dpf.pre_Allocation_one(dpfsys, wp, pls, ts, verbose)
+		dpf.pre_Allocation_one(dpfsys, pls, ts, verbose)
 		unallocated_budget_list.append(copy.deepcopy(dpfsys.eps_U))
 
 	## get block id number for every pipeline's Dominant Share
@@ -130,7 +85,7 @@ def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 
 	## when atkable_list change, go into loop again
 	## with all parameters restore.
-	def loop_alltimestamp(dpfsys: dpf.DPF, wp: dict, pls: list[list], unallocated_budget_list: list[list]):
+	def loop_alltimestamp(dpfsys: dpf.DPF, pls: list[list], unallocated_budget_list: list[list]):
 		## list of tuple(v1, v2, v3)
 		## \param v1 pipeline row index
 		##				v2 pipeline dominant share block index
@@ -140,6 +95,10 @@ def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 		def backtracking(_rklist_index: int, _ds_index: int, _prv_pl_index: int, _delta: float):
 			if verbose:
 				print("backtracking(", _rklist_index, _ds_index, _prv_pl_index, "%.2f"%_delta, ")")
+
+			if _rklist_index < 0:
+				print("Error Failed!")
+				assert(0)
 
 			## add delta to the poisoned pipeline
 			_cur_pl_index = rklist[_rklist_index]
@@ -189,11 +148,10 @@ def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 			atkable_flag = True
 
 			## Allocation
-			wp[ts] = pls[ts]
 			dpfsys.OnPipelineArrival(pls[ts])
 			unallocated_budget_list.append(dpfsys.eps_U)
 			while True:
-				finished_pls = dpfsys.OnSchedulerTimer(wp)
+				finished_pls = dpfsys.OnSchedulerTimer()
 
 				## Apply attack
 				for finished_pl in reversed(finished_pls):
@@ -212,7 +170,7 @@ def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 					delta = dpfsys.eps_U[ds_index] + alpha
 
 					## Adjust dpfsys and wp
-					dpfsys.deComplete(wp, pls[finished_pl], finished_pl)
+					dpfsys.deComplete(pls[finished_pl], finished_pl)
 					dpfsys.eps_U[ds_index] -= delta
 
 					if backtracking(rklist_index, ds_index, ts, delta) == False:
@@ -238,7 +196,7 @@ def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 						pls[ts][bid] = 0
 						continue
 					if pls[ts][bid] > alpha:
-						flag = backtracking(k-2, bid, ts, pls[ts][bid])
+						flag = backtracking(K-2, bid, ts, pls[ts][bid])
 						if not flag:
 							pls[ts][bid] = 0
 						else:
@@ -260,12 +218,11 @@ def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 				return False, pls
 		return True, pls
 	## End of loop_alltimestamp
-	
+
 	while True:
 		flag, new_pls = loop_alltimestamp(
-			copy.deepcopy(dpfsys), 
-			copy.deepcopy(wp), 
-			copy.deepcopy(pls), 
+			copy.deepcopy(dpfsys),
+			copy.deepcopy(pls),
 			copy.deepcopy(unallocated_budget_list)
 		)
 		if verbose:
@@ -275,8 +232,16 @@ def allocation(sim_arg: tuple, rklist: list[int], verbose=True):
 		if flag == True:
 			pls = new_pls
 			break
-	
+
 	return pls
+
+def block_allocation(dpf: dpf.DPF, block_pls: list[list[float]], K: int):
+	return
+
+def total_allocation(sim_arg: tuple, K: int):
+	eps_Global, N, NPB, pls = sim_arg
+	dpfsys = dpf.DPF(eps_Global, N, NPB)
+	return
 
 if __name__ == '__main__':
 	eps_Global, N, NPB, benign_pls = readdata()
