@@ -120,7 +120,7 @@ def pre_Allocation_one(dpf: DPF, pl, verbose: bool=False):
 	dpf.OnPipelineArrival(pl)
 	finished_pls = dpf.OnSchedulerTimer()
 	if verbose:
-		print(f"{dpf.timestamp+1}  ", ['%.2f'%u for u in dpf.eps_U])
-		print(f"{dpf.timestamp+1}  ", finished_pls)
+		print(f"{dpf.timestamp}  ", ['%.2f'%u for u in dpf.eps_U])
+		print(f"{dpf.timestamp}  ", finished_pls)
 	return dpf, finished_pls
 
