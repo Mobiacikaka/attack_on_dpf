@@ -12,6 +12,8 @@ class DPF:
 		self.eps_A = [] # allocated budget
 		self.eps_C = [] # consume budget
 		self.complete_pl_list = []
+		self.wp = {} # waiting pipelines
+		self.timestamp = 0
 		for _ in range(NPB):
 			self.OnDataBlockCreation()
 
@@ -23,17 +25,22 @@ class DPF:
 		self.NPB += 1
 
 	def OnPipelineArrival(self, pl: list[int|float]) -> None:
+		self.wp[self.timestamp] = pl
+		self.timestamp += 1
 		for j in range(self.NPB):
 			if pl[j] > 0:
 				self.eps_U[j] = min(self.eps_G[j] - self.eps_C[j], self.eps_U[j] + self.eps_G[j] / self.N)
 
-	def OnSchedulerTimer(self, wp: dict[int, list[float]]) -> list[int]:
-		sorted_pipelines = sorted(wp, key=lambda x: self.DominantShareList(wp.get(x)))
+	def SortWaitingPipelines(self):
+		return sorted(self.wp, key=lambda x: self.DominantShareList(self.wp.get(x)))
+
+	def OnSchedulerTimer(self) -> list[int]:
+		sorted_pipelines = self.SortWaitingPipelines()
 		i = 0
 		finished = []
 		while i < len(sorted_pipelines):
 			seq = sorted_pipelines[i]
-			d_i = wp.get(seq)
+			d_i = self.wp.get(seq)
 			assert(d_i != None)
 			if(self.CanRun(d_i)):
 				self.Allocate(d_i)
@@ -44,7 +51,7 @@ class DPF:
 						self.eps_C[j] += d_i[j]
 						self.eps_A[j] -= d_i[j]
 					assert(seq not in self.complete_pl_list)
-					wp.pop(seq)
+					self.wp.pop(seq)
 					self.complete_pl_list.append(seq)
 					finished.append(seq)
 				else:
@@ -87,37 +94,33 @@ class DPF:
 		for j in range(self.NPB):
 			self.eps_U[j] -= d_i[j]
 			self.eps_A[j] += d_i[j]
-	
+
 	## Remove completed pipeline from completed list
-	def deComplete(self, wp: dict, d_i: list[float], seq) -> None:
+	def deComplete(self, d_i: list[float], seq) -> None:
 		for j in range(self.NPB):
 			self.eps_U[j] += d_i[j]
 			self.eps_C[j] -= d_i[j]
 		self.complete_pl_list.remove(seq)
 		## Add pipeline to wp
-		wp[seq] = d_i
+		self.wp[seq] = d_i
 		## Because budget has already allocated, no more will be released
 
 def Simulation(sim_arg: tuple, verbose: bool=True) -> list[int]:
 	eps_Global, N, NPB, pls = sim_arg
-	dpf = DPF(eps_Global=eps_Global, N=N)
-	for _ in range(NPB):
-		dpf.OnDataBlockCreation()
-	
-	wp = {} # waiting pipelines
+	dpf = DPF(eps_Global=eps_Global, N=N, NPB=NPB)
+
 	for i in range(len(pls)):
-		pre_Allocation_one(dpf, wp, pls, i, verbose)
+		pre_Allocation_one(dpf, pls, i, verbose)
 
 	if verbose:
 		print("finish_sum", ["%.2f"%item for item in dpf.eps_C])
 	return dpf.complete_pl_list
 
-def pre_Allocation_one(dpf: DPF, wp: dict, pls: list[list], i: int, verbose: bool=False):
-	wp[i] = pls[i]
+def pre_Allocation_one(dpf: DPF, pls: list[list], i: int, verbose: bool=False):
 	dpf.OnPipelineArrival(pls[i])
-	finished_pls = dpf.OnSchedulerTimer(wp)
+	finished_pls = dpf.OnSchedulerTimer()
 	if verbose:
-		print(f"TS{i}:\t", ['%.2f'%u for u in dpf.eps_U])
-		print(f"TS{i}:\t", finished_pls)
-	return dpf, wp, finished_pls
+		print(f"{i+1}  ", ['%.2f'%u for u in dpf.eps_U])
+		print(f"{i+1}  ", finished_pls)
+	return dpf, finished_pls
 
