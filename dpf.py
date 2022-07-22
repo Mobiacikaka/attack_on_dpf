@@ -24,12 +24,15 @@ class DPF:
 		self.eps_C.append(0)
 		self.NPB += 1
 
-	def OnPipelineArrival(self, pl: list[int|float]) -> None:
-		self.wp[self.timestamp] = pl
-		self.timestamp += 1
+	def OPA_AddBudget(self, pl: list[int|float]) -> None:
 		for j in range(self.NPB):
 			if pl[j] > 0:
 				self.eps_U[j] = min(self.eps_G[j] - self.eps_C[j], self.eps_U[j] + self.eps_G[j] / self.N)
+
+	def OnPipelineArrival(self, pl: list[int|float]) -> None:
+		self.wp[self.timestamp] = pl
+		self.timestamp += 1
+		self.OPA_AddBudget(pl)
 
 	def SortWaitingPipelines(self):
 		return sorted(self.wp, key=lambda x: self.DominantShareList(self.wp.get(x)))
@@ -94,6 +97,8 @@ class DPF:
 		for j in range(self.NPB):
 			self.eps_U[j] -= d_i[j]
 			self.eps_A[j] += d_i[j]
+			if int(self.eps_U[j] * 10000) == 0:
+				self.eps_U[j] = 0
 
 	## Remove completed pipeline from completed list
 	def deComplete(self, d_i: list[float], seq) -> None:
