@@ -101,7 +101,7 @@ class DPF:
 				self.eps_U[j] = 0
 
 	## Remove completed pipeline from completed list
-	def deComplete(self, d_i: list[float], seq) -> None:
+	def deComplete(self, d_i: list[int|float], seq) -> None:
 		for j in range(self.NPB):
 			self.eps_U[j] += d_i[j]
 			self.eps_C[j] -= d_i[j]
