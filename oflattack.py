@@ -61,6 +61,10 @@ def gen_atkable(sim_arg, ds_id_list) -> list[bool]:
 			atkable_list.append(False)
 	return atkable_list
 
+def PrintPipelines(pls: list[list[int|float]]):
+	for pl in pls:
+		print(["%.2f"%item for item in pl])
+
 class Allocation:
 	def __init__(self, eps_Global: float, N: int, NPB: int, pls: list[list[int|float]]):
 		self.eps_Global = eps_Global
@@ -70,14 +74,14 @@ class Allocation:
 
 		self.ds_id_list = []
 		self.atkable_list = []
-		self._GenDSIndexList() # dominant share index list
-		self._GenAttackableList() # attackable list
+		self.__GenDSIndexList() # dominant share index list
+		self.__GenAttackableList() # attackable list
 
-	def _GenDSIndexList(self):
+	def __GenDSIndexList(self):
 		for pl in self.pls:
 			self.ds_id_list.append(pl.index(max(pl)))
 
-	def _GenAttackableList(self):
+	def __GenAttackableList(self):
 		for pl_index in range(len(self.pls)):
 			if self.pls[pl_index][self.ds_id_list[pl_index]] > 2 * self.eps_Global / self.N:
 				self.atkable_list.append(True)
@@ -87,8 +91,7 @@ class Allocation:
 				else:
 					self.atkable_list.append(False)
 
-	def OptimalAllocation(
-			self,
+	def _OptimalAllocation(self,
 			dpfsys: dpf.DPF,
 			block_pls: list[list[int|float]],
 			rklist: list[int],
@@ -97,6 +100,8 @@ class Allocation:
 		rklist.sort()
 		for rid in rklist:
 			block_pls.insert(rid, [alpha] * self.NPB)
+		K = len(rklist)
+		block_pls = block_pls[:rklist[K-1]+1]
 
 		## Get unallocated budget list
 		unallocated_budget_list = []
@@ -164,7 +169,7 @@ class Allocation:
 
 				assert(0)
 
-			def timestamp(ts: int, rklist_index: int):
+			def _Timestamp(ts: int, rklist_index: int):
 				pointer_pl_index = rklist[rklist_index]
 				atkable_flag = True
 
@@ -211,8 +216,7 @@ class Allocation:
 				## fill in the last attack pipeline
 				## the final result should sub a small number
 				## for the compensation of caculation
-				K = len(rklist)
-				if atkable_flag and ts == self.N-1:
+				if atkable_flag and ts == len(block_pls)-1:
 					for bid in range(self.NPB):
 						if dpfsys.eps_U[bid] <= 2 * self.eps_Global / self.N:
 							pls[ts][bid] = 0
@@ -231,11 +235,13 @@ class Allocation:
 				return atkable_flag
 
 			rklist_index = -1
-			for ts in range(rklist[0], self.N):
+			rng_low = rklist[0]
+			rng_high = rklist[len(rklist)-1] + 1
+			for ts in range(rng_low, rng_high):
 				if ts in rklist:
 					rklist_index += 1
 					assert(ts == rklist[rklist_index])
-				flag = timestamp(ts, rklist_index)
+				flag = _Timestamp(ts, rklist_index)
 				if flag == False:
 					return False, pls
 			return True, pls
@@ -252,10 +258,10 @@ class Allocation:
 				for no in range(self.N):
 					print(["%.2f"%d for d in new_pls[no]])
 			if flag == True:
-				pls = new_pls
+				block_pls = new_pls
 				break
 
-		return pls
+		return block_pls
 
 	def BlockAllocation(self, dpfsys: dpf.DPF, rng: tuple, K: int):
 		assert(K > 1)
@@ -307,10 +313,13 @@ class Allocation:
 
 def main():
 	eps_Global, N, NPB, benign_pls = readdata()
-	alloc = Allocation(eps_Global, N, NPB, benign_pls,)
+	alloc = Allocation(eps_Global, N, NPB, copy.deepcopy(benign_pls),)
 	dpfsys = dpf.DPF(eps_Global, N, NPB)
 	rng = 0, len(benign_pls)
-	print(alloc.BlockAllocation(dpfsys, rng, 2))
+	rklist = alloc.BlockAllocation(copy.deepcopy(dpfsys), rng, 2)
+	print(rklist)
+	benign_pls = alloc._OptimalAllocation(dpfsys, benign_pls, rklist)
+	PrintPipelines(benign_pls)
 
 if __name__ == '__main__':
 	main()
