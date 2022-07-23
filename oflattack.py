@@ -15,8 +15,9 @@ def return_eps_U_list(sim_arg: tuple) -> list[list[float]]:
 	eps_U_list = []
 
 	# Simulation
-	for i in range(len(benign_pls)):
-		dpfsys.OnPipelineArrival(benign_pls[i])
+	for pl in benign_pls:
+		dpfsys.AddToWaiting(pl)
+		dpfsys.OnPipelineArrival(pl)
 		dpfsys.OnSchedulerTimer()
 		eps_U_list.append(copy.deepcopy(dpfsys.eps_U))
 
@@ -91,7 +92,7 @@ class Allocation:
 				else:
 					self.atkable_list.append(False)
 
-	def _OptimalAllocation(self,
+	def __OptimalAllocation(self,
 			dpfsys: dpf.DPF,
 			block_pls: list[list[int|float]],
 			rklist: list[int],
@@ -174,6 +175,7 @@ class Allocation:
 				atkable_flag = True
 
 				## Allocation
+				dpfsys.AddToWaiting(pls[ts])
 				dpfsys.OnPipelineArrival(pls[ts])
 				unallocated_budget_list.append(dpfsys.eps_U)
 				while True:
@@ -263,7 +265,7 @@ class Allocation:
 
 		return block_pls
 
-	def BlockAllocation(self, dpfsys: dpf.DPF, rng: tuple, K: int):
+	def __BlockAllocation(self, dpfsys: dpf.DPF, rng: tuple, K: int):
 		assert(K > 1)
 		rng_low, rng_high = rng
 
@@ -309,17 +311,16 @@ class Allocation:
 		dpfsys = dpf.DPF(self.eps_Global, self.N, self.NPB)
 		piece = float(self.N) / float(K)
 		one_piece = int(piece * 2)
+		rng = (0, len(self.pls))
+		rklist = self.__BlockAllocation(dpfsys, rng, 2)
+		print(rklist)
 		return
 
 def main():
 	eps_Global, N, NPB, benign_pls = readdata()
-	alloc = Allocation(eps_Global, N, NPB, copy.deepcopy(benign_pls),)
-	dpfsys = dpf.DPF(eps_Global, N, NPB)
-	rng = 0, len(benign_pls)
-	rklist = alloc.BlockAllocation(copy.deepcopy(dpfsys), rng, 2)
-	print(rklist)
-	benign_pls = alloc._OptimalAllocation(dpfsys, benign_pls, rklist)
-	PrintPipelines(benign_pls)
+	print(dpf.Simulation((eps_Global, N, NPB, benign_pls)))
+	# alloc = Allocation(eps_Global, N, NPB, copy.deepcopy(benign_pls),)
+	# alloc.OverallAllocation(3)
 
 if __name__ == '__main__':
 	main()
