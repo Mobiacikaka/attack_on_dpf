@@ -121,10 +121,11 @@ def Simulation(sim_arg: tuple, verbose: bool=True) -> list[int]:
 	return dpf.complete_pl_list
 
 def pre_Allocation_one(dpf: DPF, pl, verbose: bool=False):
+	dpf.AddToWaiting(pl)
 	dpf.OnPipelineArrival(pl)
 	finished_pls = dpf.OnSchedulerTimer()
 	if verbose:
-		print(f"{dpf.timestamp}  ", ['%.2f'%u for u in dpf.eps_U])
-		print(f"{dpf.timestamp}  ", finished_pls)
+		# print(f"{dpf.timestamp-1}  ", ['%.2f'%u for u in dpf.eps_U])
+		print(f"{dpf.timestamp-1}  ", finished_pls)
 	return dpf, finished_pls
 
