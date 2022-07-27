@@ -5,7 +5,6 @@ import ipdb
 import random
 import dpf
 import copy
-import chooseK as ck
 
 alpha = 0.01
 
@@ -24,11 +23,11 @@ def return_eps_U_list(sim_arg: tuple) -> list[list[float]]:
 	return eps_U_list
 
 def gendata() -> tuple:
-	eps_Global	= 10.0
-	N						= 10
+	eps_Global	= 30.0
+	N						= 30
 	NPB					= 10
 	benign_pls	= []
-	for _ in range(N * 3):
+	for _ in range(N * 2):
 		pl = [random.expovariate(1.0) for _ in range(NPB)]
 		benign_pls.append(pl)
 	return eps_Global, N, NPB, benign_pls
@@ -38,8 +37,11 @@ def readdata() -> tuple[float, int, int, list[list[int|float]]]:
 	lines = pls_file.readlines()
 	benign_pls = []
 	for line in lines:
-		line = line.replace('\n', '')
-		benign_pls.append([float(item) for item in line.split("\t")])
+		try:
+			line = line.replace('\n', '')
+			benign_pls.append([float(item) for item in line.split("\t")])
+		except:
+			pass
 	return 30.0, 30, 10, benign_pls
 
 def gen_dominantshare_block_id_list(pls, N, NPB) -> list:
@@ -62,9 +64,20 @@ def gen_atkable(sim_arg, ds_id_list) -> list[bool]:
 			atkable_list.append(False)
 	return atkable_list
 
-def PrintPipelines(pls: list[list[int|float]]):
-	for pl in pls:
-		print(["%.2f"%item for item in pl])
+def PrintPipelines(pls: list[list[int|float]], N: int=0):
+	if N == 0:
+		N = len(pls)
+	for i in range(N):
+		print(["%.2f"%item for item in pls[i]])
+
+def SumPipelines(pls, list_no: list=[]):
+	if len(list_no) == 0:
+		list_no = list(range(len(pls)))
+
+	sumpl = 0
+	for i in list_no:
+		sumpl += sum(pls[i])
+	return sumpl
 
 class Allocation:
 	def __init__(self, eps_Global: float, N: int, NPB: int, pls: list[list[int|float]]):
@@ -80,17 +93,12 @@ class Allocation:
 
 	def __GenDSIndexList(self):
 		for pl in self.pls:
-			self.ds_id_list.append(pl.index(max(pl)))
+			ds_value = max(pl)
+			ds_index = pl.index(ds_value)
+			self.ds_id_list.append((ds_index, ds_value))
 
 	def __GenAttackableList(self):
-		for pl_index in range(len(self.pls)):
-			if self.pls[pl_index][self.ds_id_list[pl_index]] > 2 * self.eps_Global / self.N:
-				self.atkable_list.append(True)
-			else:
-				if sum(self.pls[pl_index]) > self.eps_Global * self.NPB / self.N:
-					self.atkable_list.append(True)
-				else:
-					self.atkable_list.append(False)
+		self.atkable_list = [False] * len(self.pls)
 
 	def __OptimalAllocation(self,
 			dpfsys: dpf.DPF,
@@ -268,42 +276,69 @@ class Allocation:
 	def __BlockAllocation(self, dpfsys: dpf.DPF, rng: tuple, K: int):
 		assert(K > 1)
 		rng_low, rng_high = rng
-
-		pl_index = rng_low
+		pls = copy.deepcopy(self.pls[rng_low:rng_high])
+		start = 0
+		rng_high -= rng_low
 		rklist = []
-		while pl_index < rng_high:
-			dpf_copy, finished_pls = dpf.pre_Allocation_one(copy.deepcopy(dpfsys), self.pls[pl_index])
+		while K > 0:
+			def __LocatePoisonedIndex(dpfsys: dpf.DPF, start: int) -> int:
+				nonlocal K
+				flag = False
+				## Find the first timestamp that a attackable pipeline is allocated
+				i = start
+				for i in range(start, rng_high):
+					pl = pls[i]
+					dpfsys.AddToWaiting(pl)
+					dpfsys.OnPipelineArrival(pl)
+					finished_pls = dpfsys.OnSchedulerTimer()
 
-			finished_atkable = []
-			for finished_pl in finished_pls:
-				if self.atkable_list[finished_pl] == True:
-					finished_atkable.append(finished_pl)
+					for finished_pl in finished_pls:
+						if self.atkable_list[finished_pl] == True:
+							flag = True
+							dpfsys.deComplete(pls[finished_pl], finished_pl)
+					if flag:
+						if K == 1:
+							K -= 1
+							rklist.append(i)
+							return i+1
+						break
+				## Get the smallest dominant share(can run) before the index
+				if flag:
+					## Get CanRun List
+					canrunlist = []
+					for pl_ts, pl in dpfsys.wp.items():
+						if dpfsys.CanRun(pl) and pl_ts < i:
+							canrunlist.append(pl_ts)
+					## Get the smallest ds in canrunlist
+					ds_min = self.eps_Global
+					for pl_index in canrunlist:
+						ds_index = self.ds_id_list[pl_index]
+						ds_value = pls[pl_index][ds_index]
+						if ds_value < ds_min:
+							ds_min = ds_value
+					## Fill in the poisoned pipeline
+					poisoned_pl = copy.deepcopy(dpfsys.eps_U)
+					for j in range(self.NPB):
+						if poisoned_pl[j] >= ds_min:
+							poisoned_pl[j] = ds_min - alpha
+					pls.insert(i, poisoned_pl)
+					rklist.append(i)
+					K -= 1
+					return i+1
+				else:
+					assert(0)
+				assert(0)
+				return 0
 
-			canrunlist = []
-			if finished_atkable != []:
-				for finished_pl in finished_atkable:
-					dpf_copy.deComplete(self.pls[finished_pl], finished_pl)
-				for wp_pl_index, wp_pl in dpf_copy.wp.items():
-					if dpf_copy.CanRun(wp_pl):
-						canrunlist.append(wp_pl_index)
-				if pl_index in canrunlist:
-					canrunlist.remove(pl_index)
-				ds_min = self.eps_Global
-				for finished_pl in canrunlist:
-					ds_index = self.ds_id_list[finished_pl]
-					if ds_min >= self.pls[finished_pl][ds_index]:
-						ds_min = self.pls[finished_pl][ds_index] - alpha
-				atk_pl = [ds_min if ds_min < dpf_copy.eps_U[j] else dpf_copy.eps_U[j] for j in range(self.NPB)]
-				rklist.append(pl_index)
-				K -= 1
-				self.pls.insert(pl_index, atk_pl)
-				self.ds_id_list.insert(pl_index, ds_min)
-				self.atkable_list.insert(pl_index, False)
-
+			## Main Body of loop
+			stop = __LocatePoisonedIndex(copy.deepcopy(dpfsys), start)
 			if K == 0:
 				break
-			dpf.pre_Allocation_one(dpfsys, self.pls[pl_index])
-			pl_index += 1
+			for pl in self.pls[start:stop]:
+				dpfsys.AddToWaiting(pl)
+				dpfsys.OnPipelineArrival(pl)
+				dpfsys.OnSchedulerTimer()
+			start = stop
 
 		return rklist
 
@@ -316,11 +351,75 @@ class Allocation:
 		print(rklist)
 		return
 
+	def DynamicATKable(self, K: int):
+		assert(len(self.pls) >= self.N)
+		dpfsys = dpf.DPF(self.eps_Global, self.N, self.NPB)
+		candi = self.N - K + 1
+		ts = 0
+		poisoned_list = []
+
+		while K > 0:
+			candi -= 1
+			ctrl = candi / K
+			# print(ctrl)
+
+			new_dpfsys, finished_pls = dpf.pre_Allocation_one(copy.deepcopy(dpfsys), self.pls[ts])
+			insert_flag = False
+
+			# Check if insert
+			for finished_pl in finished_pls:
+				_, ds_value = self.ds_id_list[finished_pl]
+				if ds_value <= ctrl:
+					if finished_pl == ts:
+						new_dpfsys.deComplete(self.pls[finished_pl], finished_pl)
+					pass
+				else:
+					insert_flag = True
+					new_dpfsys.deComplete(self.pls[finished_pl], finished_pl)
+
+			# Min Dominant Share
+			dsmi = self.eps_Global
+			for pl_no, pl in new_dpfsys.wp.items():
+				_, ds_value = self.ds_id_list[pl_no]
+				if pl_no == ts:
+					continue
+				if not new_dpfsys.CanRun(pl):
+					continue
+				if ds_value <= ctrl:
+					continue
+				if ds_value < dsmi:
+					dsmi = ds_value
+
+			if insert_flag:
+				poisoned_pl = copy.deepcopy(new_dpfsys.eps_U)
+				for j in range(self.NPB):
+					if poisoned_pl[j] >= dsmi:
+						poisoned_pl[j] = dsmi - alpha
+				self.pls.insert(ts, poisoned_pl)
+				self.ds_id_list.insert(ts, (0, dsmi))
+				poisoned_list.append(ts)
+				K -= 1
+				candi += 1
+
+			dpfsys.AddToWaiting(self.pls[ts])
+			dpfsys.OnPipelineArrival(self.pls[ts])
+			dpfsys.OnSchedulerTimer()
+			ts += 1
+
+		return poisoned_list
+
 def main():
-	eps_Global, N, NPB, benign_pls = readdata()
-	print(dpf.Simulation((eps_Global, N, NPB, benign_pls)))
-	# alloc = Allocation(eps_Global, N, NPB, copy.deepcopy(benign_pls),)
-	# alloc.OverallAllocation(3)
+	eps_Global, N, NPB, benign_pls = gendata()
+	alloc = Allocation(eps_Global, N, NPB, benign_pls)
+	poisoned_list = alloc.DynamicATKable(7)
+	PrintPipelines(alloc.pls, N)
+	sim_arg = eps_Global, N, NPB, alloc.pls
+	complete = dpf.Simulation(sim_arg, False)
+	new_list = []
+	for i in poisoned_list:
+		if i in complete:
+			new_list.append(i)
+	print(SumPipelines(alloc.pls, new_list))
 
 if __name__ == '__main__':
 	main()
