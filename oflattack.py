@@ -8,6 +8,7 @@ import copy
 
 alpha = 0.01
 
+## Utility Functions
 def return_eps_U_list(sim_arg: tuple) -> list[list[float]]:
 	eps_Global, N, NPB, benign_pls = sim_arg
 	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
@@ -23,8 +24,8 @@ def return_eps_U_list(sim_arg: tuple) -> list[list[float]]:
 	return eps_U_list
 
 def gendata() -> tuple:
-	eps_Global	= 30.0
-	N						= 30
+	eps_Global	= 60.0
+	N						= 60
 	NPB					= 10
 	benign_pls	= []
 	for _ in range(N * 2):
@@ -44,31 +45,14 @@ def readdata() -> tuple[float, int, int, list[list[int|float]]]:
 			pass
 	return 30.0, 30, 10, benign_pls
 
-def gen_dominantshare_block_id_list(pls, N, NPB) -> list:
-	ds_id_list = []
-	for i in range(N):
-		maxid = 0
-		for j in range(0, NPB):
-			if pls[i][j] > pls[i][maxid]:
-				maxid = j
-		ds_id_list.append(maxid)
-	return ds_id_list
-
-def gen_atkable(sim_arg, ds_id_list) -> list[bool]:
-	eps_Global, N, _, pls = sim_arg
-	atkable_list = []
-	for i in range(N): # what if there is no poisoned pipeline in the end
-		if pls[i][ds_id_list[i]] > eps_Global / N:
-			atkable_list.append(True)
-		else:
-			atkable_list.append(False)
-	return atkable_list
+def PrintPipeline(pl: list[int|float]):
+	print(["%.2f"%item for item in pl])
 
 def PrintPipelines(pls: list[list[int|float]], N: int=0):
 	if N == 0:
 		N = len(pls)
 	for i in range(N):
-		print(["%.2f"%item for item in pls[i]])
+		PrintPipeline(pls[i])
 
 def SumPipelines(pls, list_no: list=[]):
 	if len(list_no) == 0:
@@ -79,6 +63,8 @@ def SumPipelines(pls, list_no: list=[]):
 		sumpl += sum(pls[i])
 	return sumpl
 
+
+## Allocation class
 class Allocation:
 	def __init__(self, eps_Global: float, N: int, NPB: int, pls: list[list[int|float]]):
 		self.eps_Global = eps_Global
@@ -408,18 +394,30 @@ class Allocation:
 
 		return poisoned_list
 
-def main():
+def main_gen():
 	eps_Global, N, NPB, benign_pls = gendata()
 	alloc = Allocation(eps_Global, N, NPB, benign_pls)
-	poisoned_list = alloc.DynamicATKable(7)
-	PrintPipelines(alloc.pls, N)
+	import statistics
+	mean = statistics.mean([item for _, item in alloc.ds_id_list[:N]])
+	K = int(0.4 * N)
+	poisoned_list = alloc.DynamicATKable(K)
+	# PrintPipelines(alloc.pls, N)
 	sim_arg = eps_Global, N, NPB, alloc.pls
-	complete = dpf.Simulation(sim_arg, False)
+	complete = dpf.Simulation(sim_arg, True)
 	new_list = []
 	for i in poisoned_list:
 		if i in complete:
 			new_list.append(i)
-	print(SumPipelines(alloc.pls, new_list))
+	perc = SumPipelines(alloc.pls, new_list) / (N * NPB)
+	print("%.2f"%perc, "%.2f"%mean)
+
+def main_read_sim():
+	eps_Global, N, NPB, pls = readdata()
+	sim_arg = eps_Global, N, NPB, pls
+	print(dpf.Simulation(sim_arg))
 
 if __name__ == '__main__':
-	main()
+	# for i in range(50):
+	# 	main_gen()
+	main_read_sim()
+
