@@ -2,9 +2,11 @@
 # vim:ts=2:sw=2:noet
 
 import ipdb
+import statistics
 import random
 import dpf
 import copy
+import struct
 
 alpha = 0.01
 
@@ -24,12 +26,12 @@ def return_eps_U_list(sim_arg: tuple) -> list[list[float]]:
 	return eps_U_list
 
 def gendata() -> tuple:
-	eps_Global	= 60.0
-	N						= 60
+	eps_Global	= 30.0
+	N						= 30
 	NPB					= 10
 	benign_pls	= []
 	for _ in range(N * 2):
-		pl = [random.expovariate(1.0) for _ in range(NPB)]
+		pl = [float(format(random.expovariate(1.0), ".5")) for _ in range(NPB)]
 		benign_pls.append(pl)
 	return eps_Global, N, NPB, benign_pls
 
@@ -394,10 +396,123 @@ class Allocation:
 
 		return poisoned_list
 
+def DynamicSeqAttack(sim_arg: tuple, K: int, finished_benigh_pls=None):
+	eps_Global, N, NPB, pls = sim_arg
+	assert(len(pls) >= N)
+
+	ds_id_list = []
+	for pl in pls:
+		ds_id = 0
+		for j in range(1, NPB):
+			if pl[j] > pl[ds_id]:
+				ds_id = j
+		ds_id_list.append(ds_id)
+
+	ts = -1
+	poisoned_list = []
+	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
+	while K > 0:
+		ts += 1
+
+		unallocated_eps_list = copy.deepcopy(dpfsys.eps_U)
+		assert(len(unallocated_eps_list) == NPB)
+		for j in range(NPB):
+			unallocated_eps_list[j] += eps_Global / N
+
+		sorted_pipelines = sorted(list(dpfsys.wp.keys()), key=lambda x: dpfsys.DominantShareList(dpfsys.wp.get(x)))
+		insert_flag = False
+		ds = 0
+		for seq in sorted_pipelines:
+			pl = dpfsys.wp.get(seq)
+			assert(pl != None)
+
+			def CanRun(pl):
+				flag = True
+				NPB = len(pl)
+				def double_to_hex(f):
+					return hex(struct.unpack('<Q', struct.pack('<d', f))[0])
+				for j in range(NPB):
+					a = int(double_to_hex(pl[j]), 16)
+					b = int(double_to_hex(unallocated_eps_list[j]), 16)
+					if a >> 4 > b >> 4:
+						flag = False
+						break
+				return flag
+
+			if not CanRun(pl):
+				continue
+
+			def AttackAble(seq):
+				pl = pls[seq]
+				def __JudgeByDominantShare():
+					restbudget = (N - ts + 1) * eps_Global / N
+					if finished_benigh_pls != None:
+						for finished_benigh_pl in finished_benigh_pls:
+							restbudget -= finished_benigh_pl[ds_id_list[seq]]
+					ds_i = pl[ds_id_list[seq]]
+					if restbudget - ds_i * K < ds_i:
+						return True
+					return False
+				def __JudgeByAllBlock():
+					assert(0)
+					return False
+				return __JudgeByDominantShare()
+
+			if AttackAble(seq):
+				insert_flag = True
+				ds = pl[ds_id_list[seq]]
+				break
+			else:
+				for j in range(NPB):
+					unallocated_eps_list[j] -= pl[j]
+
+		# if there are poisoned pipelines left, insert anyway
+		if ts + K >= N:
+			insert_flag = True
+			if sorted_pipelines != []:
+				seq = sorted_pipelines[0]
+				ds = pls[seq][ds_id_list[seq]]
+			else:
+				ds = eps_Global
+		if insert_flag == True:
+			poisoned_pl = []
+			for j in range(NPB):
+				if unallocated_eps_list[j] >= ds:
+					poisoned_pl.append(ds - alpha)
+				else:
+					poisoned_pl.append(unallocated_eps_list[j])
+			pls.insert(ts, poisoned_pl)
+			ds_id_list.insert(ts, 0)
+			poisoned_list.append(ts)
+			K -= 1
+
+		# Do normal Allocation
+		dpfsys.AddToWaiting(pls[ts])
+		dpfsys.OnPipelineArrival(pls[ts])
+		finished_pls_seq = dpfsys.OnSchedulerTimer()
+		if insert_flag and ts not in finished_pls_seq:
+			print("failed", pls[ts])
+			print("spare", dpfsys.eps_U)
+			assert(0)
+
+	return pls, poisoned_list, dpfsys.complete_pl_list
+
+def main_gen2():
+	eps_Global, N, NPB, pls = gendata()
+	sim_arg = (eps_Global, N, NPB, pls)
+	K = int(0.2 * N)
+	pls, poisoned_list, _ = DynamicSeqAttack(sim_arg, K)
+	print(poisoned_list)
+	PrintPipelines(pls, N)
+	sim_arg = eps_Global, N, NPB, pls
+	complete = dpf.Simulation(sim_arg, False)
+	for i in poisoned_list:
+		assert(i in complete)
+	print("%.2f"%(SumPipelines(pls, poisoned_list) / (N * NPB)))
+
 def main_gen():
 	eps_Global, N, NPB, benign_pls = gendata()
 	alloc = Allocation(eps_Global, N, NPB, benign_pls)
-	import statistics
 	mean = statistics.mean([item for _, item in alloc.ds_id_list[:N]])
 	K = int(0.4 * N)
 	poisoned_list = alloc.DynamicATKable(K)
@@ -418,6 +533,6 @@ def main_read_sim():
 
 if __name__ == '__main__':
 	# for i in range(50):
-	# 	main_gen()
-	main_read_sim()
+	main_gen2()
+	# main_read_sim()
 
