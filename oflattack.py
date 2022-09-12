@@ -11,7 +11,7 @@ from prompt_toolkit.styles import default_pygments_style
 import dpf
 import copy
 
-alpha = 0.01
+alpha = 1.0/100
 
 ## Utility Functions
 def return_eps_U_list(sim_arg: tuple) -> list[list[float]]:
@@ -412,7 +412,7 @@ def DynamicATKable(sim_arg, K: int):
 
 	return pls, poisoned_list
 
-def DynamicSeqAttack(sim_arg: tuple, K: int, finished_benign_pls=None):
+def DynamicSeqAttack(sim_arg: tuple, K: int, notattackablelist: list=[]):
 	eps_Global, N, NPB, pls = sim_arg
 	assert(len(pls) >= N)
 
@@ -421,7 +421,9 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, finished_benign_pls=None):
 	ts = -1
 	poisoned_list = []
 	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
-	while K > 0:
+	k1 = 0
+	k2 = K
+	while k2 > 0:
 		ts += 1
 
 		unallocated_eps_list = copy.deepcopy(dpfsys.eps_U)
@@ -443,21 +445,21 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, finished_benign_pls=None):
 				def __JudgeByDominantShare():
 					j = ds_id_list[seq]
 					restbudget = (N - ts + 1) * eps_Global / N + unallocated_eps_list[j]
-					if finished_benign_pls != None:
-						for finished_benign_pl in finished_benign_pls:
-							restbudget -= finished_benign_pl[j]
+					if len(notattackablelist) > 0:
+						for i in notattackablelist:
+							if i + k1 > ts:
+								restbudget -= pls[i+k1][j]
 					ds_i = pl[ds_id_list[seq]]
-					if restbudget - ds_i * K < ds_i:
+					if restbudget - ds_i * k2 < ds_i:
 						return True
 					return False
 				def __JudgeByAllBlock():
 					for j in range(NPB):
 						restbudget = (N - ts + 1) * eps_Global / N + unallocated_eps_list[j]
-						if finished_benign_pls != None:
-							for finished_benign_pl in finished_benign_pls:
-								restbudget -= finished_benign_pl[j]
+						if len(notattackablelist) != 0:
+							assert(0)
 						ds_i = pl[ds_id_list[seq]]
-						if restbudget - ds_i * K < ds_i:
+						if restbudget - ds_i * k2 < ds_i:
 							return True
 					return False
 				return __JudgeByDominantShare()
@@ -471,7 +473,7 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, finished_benign_pls=None):
 					unallocated_eps_list[j] -= pl[j]
 
 		# if there are poisoned pipelines left, insert anyway
-		if ts + K >= N:
+		if ts + k2 >= N:
 			insert_flag = True
 			if sorted_pipelines != []:
 				seq = sorted_pipelines[0]
@@ -488,7 +490,8 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, finished_benign_pls=None):
 			pls.insert(ts, poisoned_pl)
 			ds_id_list.insert(ts, 0)
 			poisoned_list.append(ts)
-			K -= 1
+			k1 += 1
+			k2 -= 1
 
 		# Do normal Allocation
 		dpfsys.AddToWaiting(pls[ts])
@@ -499,6 +502,31 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, finished_benign_pls=None):
 			print("spare", dpfsys.eps_U)
 			assert(0)
 
+	return pls, poisoned_list
+
+def multiDynamicSeqAttack(sim_arg: tuple, K: int, times: int=2):
+	eps_Global, N, NPB, pls = sim_arg
+	poisoned_list = []
+	notattackablelist = []
+	pls = []
+	for _ in range(times):
+		pls, poisoned_list = DynamicSeqAttack(sim_arg=copy.deepcopy(sim_arg), K=K, notattackablelist=notattackablelist)
+		complete = dpf.Simulation(sim_arg)
+		complete.sort()
+		poisoned_list.sort()
+
+		ts = 0
+		countbpl = 0
+		countppl = 0
+		while ts < N:
+			if countbpl < len(complete) and ts == complete[countbpl]:
+				if countppl < len(poisoned_list) and ts == poisoned_list[countppl]:
+					countppl += 1
+				else:
+					notattackablelist.append(ts - countppl)
+				countbpl += 1
+			ts += 1
+	
 	return pls, poisoned_list
 
 def RandomAttack(sim_arg: tuple, K: int):
@@ -567,7 +595,7 @@ def main_gen3():
 
 	def CallFunc(funcname):
 		pls, poisoned_list = funcname(copy.deepcopy(sim_arg), K)
-		PrintPipelines(pls, N//2)
+		# PrintPipelines(pls, N//2)
 		sim_arg1 = (eps_Global, N, NPB, pls)
 		complete = dpf.Simulation(sim_arg1)
 		for i in poisoned_list:
@@ -577,7 +605,7 @@ def main_gen3():
 	CallFunc(RandomAttack)
 	CallFunc(DynamicSeqAttack)
 	CallFunc(DynamicATKable)
-	print()
+	CallFunc(multiDynamicSeqAttack)
 
 def main_gen():
 	eps_Global, N, NPB, benign_pls = gendata()
