@@ -79,11 +79,14 @@ class DPF:
 		ds.sort(reverse=True)
 		return ds
 
-	def CanRun(self, d_i: Sequence[float]) -> bool:
+	def CanRun(self, d_i: Sequence[float], unallocated_eps_list=None) -> bool:
 		flag = True
+		if unallocated_eps_list == None:
+			unallocated_eps_list = self.eps_U
+		assert(len(d_i) == len(unallocated_eps_list))
 		for j in range(self.NPB):
 			a = float(format(d_i[j], ".5f"))
-			b = float(format(self.eps_U[j], ".5f"))
+			b = float(format(unallocated_eps_list[j], ".5f"))
 			if a > b:
 				flag = False
 				break
@@ -106,7 +109,7 @@ class DPF:
 		self.wp[seq] = d_i
 		## Because budget has already allocated, no more will be released
 
-def Simulation(sim_arg: tuple, verbose: bool=True) -> list[int]:
+def Simulation(sim_arg: tuple, verbose: bool=False) -> list[int]:
 	eps_Global, N, NPB, pls = sim_arg
 	dpf = DPF(eps_Global=eps_Global, N=N, NPB=NPB)
 
