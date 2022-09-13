@@ -31,7 +31,7 @@ def return_eps_U_list(sim_arg: tuple) -> list[list[float]]:
 def gendata() -> tuple:
 	eps_Global	= 30.0
 	N						= 30
-	NPB					= 10
+	NPB					= 30
 	benign_pls	= []
 	for _ in range(N * 2):
 		pl = [float(format(random.expovariate(1.0), ".5")) for _ in range(NPB)]
@@ -360,12 +360,12 @@ def DynamicATKable(sim_arg, K: int):
 
 	dpfsys = dpf.DPF(eps_Global, N, NPB)
 	candi = N - K + 1
-	ts = 0
+	ts = -1
 	poisoned_list = []
 	while K > 0:
+		ts += 1
 		candi -= 1
 		ctrl = candi / K
-		# print(ctrl)
 
 		new_dpfsys, finished_pls = dpf.pre_Allocation_one(copy.deepcopy(dpfsys), pls[ts])
 		insert_flag = False
@@ -394,6 +394,9 @@ def DynamicATKable(sim_arg, K: int):
 			if ds_value < dsmi:
 				dsmi = ds_value
 
+		if ts + K >= N:
+			insert_flag = True
+
 		if insert_flag:
 			poisoned_pl = copy.deepcopy(new_dpfsys.eps_U)
 			for j in range(NPB):
@@ -407,8 +410,85 @@ def DynamicATKable(sim_arg, K: int):
 
 		dpfsys.AddToWaiting(pls[ts])
 		dpfsys.OnPipelineArrival(pls[ts])
-		dpfsys.OnSchedulerTimer()
+		finished_pls_seq = dpfsys.OnSchedulerTimer()
+		if insert_flag and ts not in finished_pls_seq:
+			print("failed", pls[ts])
+			print("spare", dpfsys.eps_U)
+			assert(0)
+
+	return pls, poisoned_list
+
+def DynamicSeqAttack0(sim_arg: tuple, K: int):
+	eps_Global, N, NPB, pls = sim_arg
+	assert(len(pls) >= N)
+
+	ds_id_list = getDominantShareIDList(pls)
+
+	ts = -1
+	poisoned_list = []
+	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
+	k1 = 0
+	k2 = K
+	while k2 > 0:
 		ts += 1
+
+		unallocated_eps_list = copy.deepcopy(dpfsys.eps_U)
+		for j in range(NPB):
+			unallocated_eps_list[j] += eps_Global / N
+
+		sorted_pipelines = sorted(list(dpfsys.wp.keys()), key=lambda x: dpfsys.DominantShareList(dpfsys.wp.get(x)))
+		insert_flag = False
+		ds = 0
+		for seq in sorted_pipelines:
+			pl = dpfsys.wp.get(seq)
+			assert(pl != None)
+
+			if not dpfsys.CanRun(pl, unallocated_eps_list):
+				continue
+
+			def AttackAble(seq):
+				ds_id = ds_id_list[seq]
+				assert(pl != None)
+				ds = pl[ds_id]
+				return ((N-ts-k2)/k2) < ds
+
+			if AttackAble(seq):
+				insert_flag = True
+				ds = pl[ds_id_list[seq]]
+				break
+			else:
+				for j in range(NPB):
+					unallocated_eps_list[j] -= pl[j]
+
+		# if there are poisoned pipelines left, insert anyway
+		if ts + k2 >= N:
+			insert_flag = True
+			if sorted_pipelines != []:
+				seq = sorted_pipelines[0]
+				ds = pls[seq][ds_id_list[seq]]
+			else:
+				ds = eps_Global
+		if insert_flag == True:
+			poisoned_pl = []
+			for j in range(NPB):
+				if unallocated_eps_list[j] >= ds:
+					poisoned_pl.append(ds - alpha)
+				else:
+					poisoned_pl.append(unallocated_eps_list[j])
+			pls.insert(ts, poisoned_pl)
+			ds_id_list.insert(ts, 0)
+			poisoned_list.append(ts)
+			k1 += 1
+			k2 -= 1
+
+		# Do normal Allocation
+		dpfsys.AddToWaiting(pls[ts])
+		dpfsys.OnPipelineArrival(pls[ts])
+		finished_pls_seq = dpfsys.OnSchedulerTimer()
+		if insert_flag and ts not in finished_pls_seq:
+			print("failed", pls[ts])
+			print("spare", dpfsys.eps_U)
+			assert(0)
 
 	return pls, poisoned_list
 
@@ -504,7 +584,7 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, notattackablelist: list=[]):
 
 	return pls, poisoned_list
 
-def multiDynamicSeqAttack(sim_arg: tuple, K: int, times: int=2):
+def multiDynamicSeqAttack(sim_arg: tuple, K: int, times: int=3):
 	eps_Global, N, NPB, pls = sim_arg
 	poisoned_list = []
 	notattackablelist = []
@@ -588,14 +668,14 @@ def RandomAttack(sim_arg: tuple, K: int):
 
 	return pls, poisoned_list
 
-def main_gen3():
+def main_gen():
 	eps_Global, N, NPB, benign_pls = gendata()
 	sim_arg = (eps_Global, N, NPB, benign_pls)
-	K = int(0.1 * N)
+	K = int(0.2 * N)
 
 	def CallFunc(funcname):
 		pls, poisoned_list = funcname(copy.deepcopy(sim_arg), K)
-		# PrintPipelines(pls, N//2)
+		# PrintPipelines(pls, N)
 		sim_arg1 = (eps_Global, N, NPB, pls)
 		complete = dpf.Simulation(sim_arg1)
 		for i in poisoned_list:
@@ -603,25 +683,10 @@ def main_gen3():
 		print("%.3f"%(SumPipelines(pls, poisoned_list) / (N * NPB)), poisoned_list)
 
 	CallFunc(RandomAttack)
-	CallFunc(DynamicSeqAttack)
 	CallFunc(DynamicATKable)
+	CallFunc(DynamicSeqAttack0)
+	CallFunc(DynamicSeqAttack)
 	CallFunc(multiDynamicSeqAttack)
-
-def main_gen():
-	eps_Global, N, NPB, benign_pls = gendata()
-	alloc = Allocation(eps_Global, N, NPB, benign_pls)
-	mean = statistics.mean([item for _, item in alloc.ds_id_list[:N]])
-	K = int(0.4 * N)
-	poisoned_list = alloc.DynamicATKable(K)
-	# PrintPipelines(alloc.pls, N)
-	sim_arg = eps_Global, N, NPB, alloc.pls
-	complete = dpf.Simulation(sim_arg, True)
-	new_list = []
-	for i in poisoned_list:
-		if i in complete:
-			new_list.append(i)
-	perc = SumPipelines(alloc.pls, new_list) / (N * NPB)
-	print("%.2f"%perc, "%.2f"%mean)
 
 def main_read_sim():
 	eps_Global, N, NPB, pls = readdata()
@@ -629,4 +694,4 @@ def main_read_sim():
 	print(dpf.Simulation(sim_arg))
 
 if __name__ == '__main__':
-	main_gen3()
+	main_gen()
