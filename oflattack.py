@@ -1,13 +1,7 @@
 #!/bin/python
 # vim:ts=2:sw=2:noet
 
-from ast import Call
-from pickle import NONE
-import ipdb
-import statistics
 import random
-
-from prompt_toolkit.styles import default_pygments_style
 import dpf
 import copy
 
@@ -524,7 +518,7 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, notattackablelist: list=[]):
 				pl = pls[seq]
 				def __JudgeByDominantShare():
 					j = ds_id_list[seq]
-					restbudget = (N - ts + 1) * eps_Global / N + unallocated_eps_list[j]
+					restbudget = (N - ts - 1) * eps_Global / N + unallocated_eps_list[j]
 					if len(notattackablelist) > 0:
 						for i in notattackablelist:
 							if i + k1 > ts:
@@ -535,7 +529,7 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, notattackablelist: list=[]):
 					return False
 				def __JudgeByAllBlock():
 					for j in range(NPB):
-						restbudget = (N - ts + 1) * eps_Global / N + unallocated_eps_list[j]
+						restbudget = (N - ts - 1) * eps_Global / N + unallocated_eps_list[j]
 						if len(notattackablelist) != 0:
 							assert(0)
 						ds_i = pl[ds_id_list[seq]]
@@ -566,7 +560,7 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, notattackablelist: list=[]):
 				if unallocated_eps_list[j] >= ds:
 					poisoned_pl.append(ds - alpha)
 				else:
-					poisoned_pl.append(unallocated_eps_list[j])
+					poisoned_pl.append(unallocated_eps_list[j]-alpha)
 			pls.insert(ts, poisoned_pl)
 			ds_id_list.insert(ts, 0)
 			poisoned_list.append(ts)
@@ -584,7 +578,7 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, notattackablelist: list=[]):
 
 	return pls, poisoned_list
 
-def multiDynamicSeqAttack(sim_arg: tuple, K: int, times: int=3):
+def multiDynamicSeqAttack(sim_arg: tuple, K: int, times: int=2):
 	eps_Global, N, NPB, pls = sim_arg
 	poisoned_list = []
 	notattackablelist = []
@@ -606,7 +600,7 @@ def multiDynamicSeqAttack(sim_arg: tuple, K: int, times: int=3):
 					notattackablelist.append(ts - countppl)
 				countbpl += 1
 			ts += 1
-	
+
 	return pls, poisoned_list
 
 def RandomAttack(sim_arg: tuple, K: int):
