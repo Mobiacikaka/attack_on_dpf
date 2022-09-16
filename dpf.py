@@ -1,11 +1,13 @@
 #!/bin/python3
 # vim:ts=2:sw=2:noet
-from typing import Sequence
+from decimal import Decimal as dec
+
+dec_format = '%.5f'
 
 class DPF:
-	def __init__(self, eps_Global: float=5.0, N: int=5, NPB: int=0):
-		self.eps_Global = eps_Global
-		self.NPB = 0	# number of privacy block
+	def __init__(self, eps_Global: float, N: int, NPB: int):
+		self.eps_Global = dec(str(dec_format % eps_Global))
+		self.NPB = NPB	# number of privacy block
 		self.N = N # first N pipelines
 		self.eps_G = [] # global budget
 		self.eps_U = [] # unlocked budget
@@ -19,16 +21,16 @@ class DPF:
 
 	def OnDataBlockCreation(self) -> None:
 		self.eps_G.append(self.eps_Global)
-		self.eps_U.append(0)
-		self.eps_A.append(0)
-		self.eps_C.append(0)
+		self.eps_U.append(dec(dec_format % 0))
+		self.eps_A.append(dec(dec_format % 0))
+		self.eps_C.append(dec(dec_format % 0))
 		self.NPB += 1
 
-	def AddToWaiting(self, pl: list[int|float]):
+	def AddToWaiting(self, pl: list[dec]):
 		self.wp[self.timestamp] = pl
 		self.timestamp += 1
 
-	def OnPipelineArrival(self, pl: list[int|float]) -> None:
+	def OnPipelineArrival(self, pl: list[dec]) -> None:
 		for j in range(self.NPB):
 			if pl[j] > 0:
 				self.eps_U[j] = min(self.eps_G[j] - self.eps_C[j], self.eps_U[j] + self.eps_G[j] / self.N)
@@ -63,8 +65,8 @@ class DPF:
 			i += 1
 		return finished
 
-	def DominantShare(self, d_i) -> float:
-		max_share = 0
+	def DominantShare(self, d_i) -> dec:
+		max_share = dec(dec_format % 0)
 		for j in range(self.NPB):
 			if d_i[j] > 0:
 				share = d_i[j] / self.eps_G[j]
@@ -72,42 +74,35 @@ class DPF:
 					max_share = share
 		return max_share
 
-	def DominantShareList(self, d_i) -> list[float]:
+	def DominantShareList(self, d_i) -> list[dec]:
 		ds = []
 		for j in range(self.NPB):
 			ds.append(d_i[j] / self.eps_G[j])
 		ds.sort(reverse=True)
 		return ds
 
-	def CanRun(self, d_i: Sequence[float], unallocated_eps_list=None) -> bool:
-		flag = True
-		if unallocated_eps_list == None:
+	def CanRun(self, d_i: list[dec], unallocated_eps_list: list[dec]=[]) -> bool:
+		if len(unallocated_eps_list) == 0:
 			unallocated_eps_list = self.eps_U
 		assert(len(d_i) == len(unallocated_eps_list))
-		for j in range(self.NPB):
-			a = float(format(d_i[j], ".5f"))
-			b = float(format(unallocated_eps_list[j], ".5f"))
-			if a > b:
-				flag = False
-				break
-		return flag
 
-	def Allocate(self, d_i: Sequence[float]) -> None:
+		for j in range(self.NPB):
+			if d_i[j] > unallocated_eps_list[j]:
+				return False
+		return True
+
+	def Allocate(self, d_i: list[dec]) -> None:
 		for j in range(self.NPB):
 			self.eps_U[j] -= d_i[j]
 			self.eps_A[j] += d_i[j]
-			if int(self.eps_U[j] * 10000) == 0:
-				self.eps_U[j] = 0
 
 	## Remove completed pipeline from completed list
-	def deComplete(self, d_i: list[int|float], seq) -> None:
+	def deComplete(self, d_i: list[dec], seq) -> None:
 		for j in range(self.NPB):
 			self.eps_U[j] += d_i[j]
 			self.eps_C[j] -= d_i[j]
 		self.complete_pl_list.remove(seq)
-		## Add pipeline to wp
 		self.wp[seq] = d_i
-		## Because budget has already allocated, no more will be released
 
 def Simulation(sim_arg: tuple, verbose: bool=False) -> list[int]:
 	eps_Global, N, NPB, pls = sim_arg
@@ -117,7 +112,7 @@ def Simulation(sim_arg: tuple, verbose: bool=False) -> list[int]:
 		pre_Allocation_one(dpf, pl, verbose)
 
 	if verbose:
-		print("finish_sum", ["%.2f"%item for item in dpf.eps_C])
+		print("finish_sum", [dec_format % item for item in dpf.eps_C])
 	return dpf.complete_pl_list
 
 def pre_Allocation_one(dpf: DPF, pl, verbose: bool=False):
@@ -125,7 +120,7 @@ def pre_Allocation_one(dpf: DPF, pl, verbose: bool=False):
 	dpf.OnPipelineArrival(pl)
 	finished_pls = dpf.OnSchedulerTimer()
 	if verbose:
-		print(f"{dpf.timestamp-1}  ", ['%.2f'%u for u in dpf.eps_U])
+		print(f"{dpf.timestamp-1}  ", [dec_format % u for u in dpf.eps_U])
 		print(f"{dpf.timestamp-1}  ", finished_pls)
 	return dpf, finished_pls
 
