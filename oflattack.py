@@ -6,7 +6,7 @@ import dpf
 import copy
 
 from dpf import dec_format
-alpha = dec('0.01')
+alpha = dec(dec_format % (1 / 100))
 
 ## Utility Functions
 def return_eps_U_list(sim_arg: tuple) -> list[list[dec]]:
@@ -72,6 +72,44 @@ def getDominantShareIDList(pls):
 				ds_id = j
 		ds_id_list.append(ds_id)
 	return ds_id_list
+
+def MaximizeAllocationAtTS(dpfsys: dpf.DPF, ) -> list[dec]:
+	unallocated_eps_list = copy.deepcopy(dpfsys.eps_U)
+	for j in range(dpfsys.NPB):
+		unallocated_eps_list[j] += dpfsys.eps_G[j] / dpfsys.N
+
+	wp = dpfsys.wp
+	sorted_pipelines = sorted(list(wp.keys()), key=lambda x: dpfsys.DominantShareList(wp.get(x)))
+	canrunflag = False # check if exist waiting pipeline can run
+	poisoned_pl = []
+	for bplno in sorted_pipelines:
+		if sum(unallocated_eps_list) <= sum(poisoned_pl):
+			break # the allocation afterwards cannot be higher
+
+		bpl = wp.get(bplno, None)
+		assert(bpl != None)
+		if not dpfsys.CanRun(bpl, unallocated_eps_list):
+			continue
+
+		canrunflag = True
+		ds = max(bpl)
+		tmp_poisoned_pl = []
+		for j in range(dpfsys.NPB):
+			if ds <= unallocated_eps_list[j]:
+				tmp_poisoned_pl.append(ds - alpha)
+			else:
+				tmp_poisoned_pl.append(unallocated_eps_list[j])
+
+		if sum(tmp_poisoned_pl) > sum(poisoned_pl):
+			poisoned_pl = tmp_poisoned_pl
+
+		for j in range(dpfsys.NPB):
+			unallocated_eps_list[j] -= bpl[j]
+
+	if not canrunflag:
+		poisoned_pl = unallocated_eps_list
+
+	return poisoned_pl
 
 
 ## Allocation Functions
@@ -369,9 +407,6 @@ def RandomAttack(sim_arg: tuple, K: int):
 	eps_Global, N, NPB, pls = sim_arg
 	assert(N >= K)
 
-	ds_id_list = getDominantShareIDList(pls)
-	step = dec(dec_format % (eps_Global / N))
-
 	poisoned_list = []
 	choices = list(range(N))
 	for _ in range(K):
@@ -382,38 +417,9 @@ def RandomAttack(sim_arg: tuple, K: int):
 	poisoned_list.sort()
 	dpfsys = dpf.DPF(eps_Global, N, NPB)
 	for ts in range(N):
-
 		## Insert Poisoned Pipelines
 		if ts in poisoned_list:
-			unallocated_eps_list = copy.deepcopy(dpfsys.eps_U)
-			for j in range(NPB):
-				unallocated_eps_list[j] += step
-			sorted_pipelines = sorted(list(dpfsys.wp.keys()), key=lambda x: dpfsys.DominantShareList(dpfsys.wp.get(x)))
-
-			poisoned_pl = [0] * NPB
-			canrunflag = False
-			for bplno in sorted_pipelines:
-				if sum(unallocated_eps_list) <= sum(poisoned_pl):
-					break
-				bpl = dpfsys.wp.get(bplno, None)
-				assert(bpl != None)
-				if not dpfsys.CanRun(bpl, unallocated_eps_list):
-					continue
-				canrunflag = True
-				ds = bpl[ds_id_list[bplno]]
-				new_poisoned_pl = []
-				for j in range(NPB):
-					if ds <= unallocated_eps_list[j]:
-						new_poisoned_pl.append(ds-alpha)
-					else:
-						new_poisoned_pl.append(unallocated_eps_list[j])
-				if sum(new_poisoned_pl) > sum(poisoned_pl):
-					poisoned_pl = new_poisoned_pl
-				for j in range(NPB):
-					unallocated_eps_list[j] -= bpl[j]
-
-			if not canrunflag:
-				poisoned_pl = unallocated_eps_list
+			poisoned_pl = MaximizeAllocationAtTS(dpfsys)
 			pls.insert(ts, poisoned_pl)
 
 		## Do Normal Allocation
@@ -425,9 +431,62 @@ def RandomAttack(sim_arg: tuple, K: int):
 
 	return pls, poisoned_list
 
+def BlockAttack(sim_arg: tuple, K: int):
+	eps_Global, N, NPB, pls = sim_arg
+	assert(len(pls) >= N)
+
+	ds_id_list = getDominantShareIDList(pls)
+
+	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
+	k1 = 0
+	k2 = K
+	start = 0
+	end = 0
+	poisoned_list = []
+	while k2 > 0:
+		## Find The Best Insert Position In The Next Several Pipelines
+		start = end
+		end += (N - K) / K
+		dpfsys2 = copy.deepcopy(dpfsys)
+		poisoned_pl = []
+		insert_ts = 0
+		for ts2 in range(int(start)+k1, int(end)+k1+1):
+			if ts2 >= N:
+				break
+
+			tmp_poisoned_pl = MaximizeAllocationAtTS(dpfsys2)
+			if sum(tmp_poisoned_pl) > sum(poisoned_pl):
+				poisoned_pl = tmp_poisoned_pl
+				insert_ts = ts2
+
+			dpfsys2.AddToWaiting(pls[ts2])
+			dpfsys2.OnPipelineArrival(pls[ts2])
+			dpfsys2.OnSchedulerTimer()
+
+		## Insert
+		pls.insert(insert_ts, poisoned_pl)
+		ds_id_list.insert(insert_ts, 0)
+		poisoned_list.append(insert_ts)
+		k1 += 1
+		k2 -= 1
+
+		## Do Normal Allocation
+		for ts in range(int(start)+k1-1, int(end)+k1):
+			if ts >= N:
+				break
+			dpfsys.AddToWaiting(pls[ts])
+			dpfsys.OnPipelineArrival(pls[ts])
+			finished_pls_seq = dpfsys.OnSchedulerTimer()
+			# print(f'{ts}:eps\t', dpfsys.eps_U)
+			if ts == insert_ts:
+				# print(f'{ts}\t', pls[ts])
+				assert(insert_ts in finished_pls_seq)
+
+	return pls, poisoned_list
+
 def main_gen():
 	# eps_Global, N, NPB, benign_pls = readdata('data.csv')
-	eps_Global, N, NPB, benign_pls = gendata(30.0, 30, 30)
+	eps_Global, N, NPB, benign_pls = gendata(30.0, 30, 20)
 	sim_arg = (eps_Global, N, NPB, benign_pls)
 	K = int(0.2 * N)
 
@@ -441,10 +500,11 @@ def main_gen():
 		perc = SumPipelines(pls, poisoned_list) / (N * NPB)
 		print('%.4f' % perc, poisoned_list)
 
-	# CallFunc(RandomAttack)
-	CallFunc(DynamicATKable)
+	CallFunc(RandomAttack)
+	CallFunc(BlockAttack)
+	# CallFunc(DynamicATKable)
 	CallFunc(DynamicSeqAttack0)
-	# CallFunc(DynamicSeqAttack)
+	CallFunc(DynamicSeqAttack)
 	# CallFunc(multiDynamicSeqAttack)
 
 def main_read_sim():
