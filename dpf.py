@@ -2,7 +2,7 @@
 # vim:ts=2:sw=2:noet
 from decimal import Decimal as dec
 
-dec_format = '%.5f'
+dec_format = '%.2f'
 
 class DPF:
 	def __init__(self, eps_Global: float, N: int, NPB: int):
@@ -24,7 +24,6 @@ class DPF:
 		self.eps_U.append(dec(dec_format % 0))
 		self.eps_A.append(dec(dec_format % 0))
 		self.eps_C.append(dec(dec_format % 0))
-		self.NPB += 1
 
 	def AddToWaiting(self, pl: list[dec]):
 		self.wp[self.timestamp] = pl
@@ -123,4 +122,3 @@ def pre_Allocation_one(dpf: DPF, pl, verbose: bool=False):
 		print(f"{dpf.timestamp-1}  ", [dec_format % u for u in dpf.eps_U])
 		print(f"{dpf.timestamp-1}  ", finished_pls)
 	return dpf, finished_pls
-
