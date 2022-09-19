@@ -285,8 +285,9 @@ def DynamicSeqAttack0(sim_arg: tuple, K: int):
 
 	return pls, poisoned_list
 
-def DynamicSeqAttack(sim_arg: tuple, K: int, notattackablelist: list=[]):
+def DynamicSeqAttack(sim_arg: tuple, K: int, transzendental: tuple[list, list]=([], [])):
 	eps_Global, N, NPB, pls = sim_arg
+	pre_pls, pre_complete = transzendental
 	assert(len(pls) >= N)
 
 	ds_id_list = getDominantShareIDList(pls)
@@ -319,22 +320,15 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, notattackablelist: list=[]):
 				def __JudgeByDominantShare():
 					j = ds_id_list[seq]
 					restbudget = (N - ts - 1) * step + unallocated_eps_list[j]
-					if len(notattackablelist) > 0:
-						for i in notattackablelist:
-							if i + k1 > ts:
-								restbudget -= pls[i+k1][j]
 					ds_i = pl[ds_id_list[seq]]
-					if restbudget - ds_i * k2 < ds_i:
+					if len(pre_pls) > 0:
+						for i in pre_complete:
+							if i > ts:
+								restbudget -= pre_pls[i][j]
+					else:
+						restbudget -= ds_i * k2
+					if restbudget < ds_i:
 						return True
-					return False
-				def __JudgeByAllBlock():
-					for j in range(NPB):
-						restbudget = (N - ts - 1) * step + unallocated_eps_list[j]
-						if len(notattackablelist) != 0:
-							assert(0)
-						ds_i = pl[ds_id_list[seq]]
-						if restbudget - ds_i * k2 < ds_i:
-							return True
 					return False
 				return __JudgeByDominantShare()
 
@@ -381,25 +375,15 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, notattackablelist: list=[]):
 def multiDynamicSeqAttack(sim_arg: tuple, K: int, times: int=2):
 	eps_Global, N, NPB, pls = sim_arg
 	poisoned_list = []
-	notattackablelist = []
 	pls = []
+	pre_pls = []
+	pre_complete = []
 	for _ in range(times):
-		pls, poisoned_list = DynamicSeqAttack(sim_arg=copy.deepcopy(sim_arg), K=K, notattackablelist=notattackablelist)
+		pls, poisoned_list = DynamicSeqAttack(copy.deepcopy(sim_arg), K, (pre_pls, pre_complete))
 		complete = dpf.Simulation(sim_arg)
 		complete.sort()
 		poisoned_list.sort()
-
-		ts = 0
-		countbpl = 0
-		countppl = 0
-		while ts < N:
-			if countbpl < len(complete) and ts == complete[countbpl]:
-				if countppl < len(poisoned_list) and ts == poisoned_list[countppl]:
-					countppl += 1
-				else:
-					notattackablelist.append(ts - countppl)
-				countbpl += 1
-			ts += 1
+		pre_pls, pre_complete = pls, complete
 
 	return pls, poisoned_list
 
@@ -537,9 +521,74 @@ def BlockAttack2(sim_arg: tuple, K: int):
 
 	return pls, poisoned_list
 
+def GreedyAttack(sim_arg: tuple, K: int):
+	eps_Global, N, NPB, pls = sim_arg
+	assert(len(pls) >= N)
+
+	poisoned_list = []
+	k1 = 0
+	k2 = K
+	while k2 > 0:
+		new_poisoned_list = []
+		new_sum = 0
+		for insert_ts in range(N-K+1):
+			if insert_ts in poisoned_list:
+				continue
+
+			## generate insertion list
+			tmp_poisoned_list = copy.deepcopy(poisoned_list)
+			tmp_poisoned_list.append(insert_ts)
+			tmp_poisoned_list.sort()
+
+			## greedy on each position
+			tmp_sum = 0
+			dpfsys = dpf.DPF(eps_Global, N, NPB)
+			for i in range(N-K+1):
+				if i in tmp_poisoned_list:
+					tmp_poisoned_pl = MaximizeAllocationAtTS(dpfsys)
+					tmp_sum += sum(tmp_poisoned_pl)
+					dpfsys.AddToWaiting(tmp_poisoned_pl)
+					dpfsys.OnPipelineArrival(tmp_poisoned_pl)
+					dpfsys.OnSchedulerTimer()
+				if i >= N-K:
+					break
+				dpfsys.AddToWaiting(pls[i])
+				dpfsys.OnPipelineArrival(pls[i])
+				dpfsys.OnSchedulerTimer()
+
+			if tmp_sum > new_sum:
+				new_sum = tmp_sum
+				new_poisoned_list = tmp_poisoned_list
+
+		## len(poisoned_list) += 1
+		poisoned_list = new_poisoned_list
+		k1 += 1
+		k2 -= 1
+
+	assert(len(poisoned_list) == K)
+	k1 = 0
+	for i in range(K):
+		poisoned_list[i] += k1
+		k1 += 1
+
+	k1 = 0
+	k2 = K
+	dpfsys = dpf.DPF(eps_Global, N, NPB)
+	for i in range(N):
+		if i in poisoned_list:
+			poisoned_pl = MaximizeAllocationAtTS(dpfsys)
+			pls.insert(i, poisoned_pl)
+		dpfsys.AddToWaiting(pls[i])
+		dpfsys.OnPipelineArrival(pls[i])
+		finished_pls_seq = dpfsys.OnSchedulerTimer()
+		if i in poisoned_list:
+			assert(i in finished_pls_seq)
+
+	return pls, poisoned_list
+
 def main_gen():
-	eps_Global, N, NPB, benign_pls = readdata('data.csv')
-	# eps_Global, N, NPB, benign_pls = gendata(30.0, 30, 30)
+	# eps_Global, N, NPB, benign_pls = readdata('data.csv')
+	eps_Global, N, NPB, benign_pls = gendata(30.0, 30, 10)
 	sim_arg = (eps_Global, N, NPB, benign_pls)
 	K = int(0.2 * N)
 	K = 7
@@ -552,20 +601,22 @@ def main_gen():
 		for i in poisoned_list:
 			assert(i in complete)
 		perc = SumPipelines(pls, poisoned_list) / (N * NPB)
-		print('%.4f' % perc, poisoned_list)
+		print('%.4f' % perc, poisoned_list, end='\t')
+		print(str(funcname))
 
 	# CallFunc(RandomAttack)
 	CallFunc(BlockAttack)
 	# CallFunc(BlockAttack2)
 	# CallFunc(DynamicATKable)
-	# CallFunc(DynamicSeqAttack0)
+	CallFunc(DynamicSeqAttack0)
 	CallFunc(DynamicSeqAttack)
-	CallFunc(multiDynamicSeqAttack)
+	# CallFunc(multiDynamicSeqAttack)
+	CallFunc(GreedyAttack)
 
 def main_read_sim():
-	eps_Global, N, NPB, pls = readdata()
+	eps_Global, N, NPB, pls = readdata('data.csv')
 	sim_arg = eps_Global, N, NPB, pls
-	print(dpf.Simulation(sim_arg))
+	print(dpf.Simulation(sim_arg, True))
 
 if __name__ == '__main__':
 	main_gen()
