@@ -43,7 +43,7 @@ def readdata(filename: str='benign_pls.csv') -> tuple[float, int, int, list[list
 			benign_pls.append([dec(item) for item in line.split("\t")])
 		except:
 			pass
-	return 30.0, 30, 10, benign_pls
+	return float(len(benign_pls)), len(benign_pls), len(benign_pls[0]), benign_pls
 
 def PrintPipeline(pl: list[dec]):
 	print([dec_format % item for item in pl])
@@ -484,11 +484,65 @@ def BlockAttack(sim_arg: tuple, K: int):
 
 	return pls, poisoned_list
 
+def BlockAttack2(sim_arg: tuple, K: int):
+	eps_Global, N, NPB, pls = sim_arg
+	assert(len(pls) >= N)
+
+	ds_id_list = getDominantShareIDList(pls)
+
+	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
+	k1 = 0
+	k2 = K
+	start = 0
+	end = 0
+	poisoned_list = []
+	insert_ts = -1
+	while k2 > 0:
+		## Find The Best Insert Position In The Next Several Pipelines
+		start = insert_ts + 1
+		end += (N - K) / K
+		dpfsys2 = copy.deepcopy(dpfsys)
+		poisoned_pl = []
+		for ts2 in range(start, int(end)+k1+1):
+			if ts2 >= N:
+				break
+
+			tmp_poisoned_pl = MaximizeAllocationAtTS(dpfsys2)
+			if sum(tmp_poisoned_pl) > sum(poisoned_pl):
+				poisoned_pl = tmp_poisoned_pl
+				insert_ts = ts2
+
+			dpfsys2.AddToWaiting(pls[ts2])
+			dpfsys2.OnPipelineArrival(pls[ts2])
+			dpfsys2.OnSchedulerTimer()
+
+		## Insert
+		pls.insert(insert_ts, poisoned_pl)
+		ds_id_list.insert(insert_ts, 0)
+		poisoned_list.append(insert_ts)
+		k1 += 1
+		k2 -= 1
+
+		## Do Normal Allocation
+		for ts in range(start, insert_ts+1):
+			if ts >= N:
+				break
+			dpfsys.AddToWaiting(pls[ts])
+			dpfsys.OnPipelineArrival(pls[ts])
+			finished_pls_seq = dpfsys.OnSchedulerTimer()
+			# print(f'{ts}:eps\t', dpfsys.eps_U)
+			if ts == insert_ts:
+				# print(f'{ts}\t', pls[ts])
+				assert(insert_ts in finished_pls_seq)
+
+	return pls, poisoned_list
+
 def main_gen():
-	# eps_Global, N, NPB, benign_pls = readdata('data.csv')
-	eps_Global, N, NPB, benign_pls = gendata(30.0, 30, 20)
+	eps_Global, N, NPB, benign_pls = readdata('data.csv')
+	# eps_Global, N, NPB, benign_pls = gendata(30.0, 30, 30)
 	sim_arg = (eps_Global, N, NPB, benign_pls)
 	K = int(0.2 * N)
+	K = 7
 
 	def CallFunc(funcname):
 		pls, poisoned_list = funcname(copy.deepcopy(sim_arg), K)
@@ -500,12 +554,13 @@ def main_gen():
 		perc = SumPipelines(pls, poisoned_list) / (N * NPB)
 		print('%.4f' % perc, poisoned_list)
 
-	CallFunc(RandomAttack)
+	# CallFunc(RandomAttack)
 	CallFunc(BlockAttack)
+	# CallFunc(BlockAttack2)
 	# CallFunc(DynamicATKable)
-	CallFunc(DynamicSeqAttack0)
+	# CallFunc(DynamicSeqAttack0)
 	CallFunc(DynamicSeqAttack)
-	# CallFunc(multiDynamicSeqAttack)
+	CallFunc(multiDynamicSeqAttack)
 
 def main_read_sim():
 	eps_Global, N, NPB, pls = readdata()
