@@ -4,6 +4,7 @@ from decimal import Decimal as dec
 import random
 import dpf
 import copy
+import statistics
 
 from dpf import dec_format
 alpha = dec(dec_format % (1 / 100))
@@ -25,7 +26,7 @@ def return_eps_U_list(sim_arg: tuple) -> list[list[dec]]:
 
 def gendata(eps_Global, N, NPB) -> tuple:
 	benign_pls	= []
-	for _ in range(N * 2):
+	for _ in range(int(N * 1.1)):
 		pl = []
 		for _ in range(NPB):
 			rnd = random.expovariate(1.0)
@@ -521,7 +522,7 @@ def BlockAttack2(sim_arg: tuple, K: int):
 
 	return pls, poisoned_list
 
-def GreedyAttack(sim_arg: tuple, K: int):
+def NaiveGreedy(sim_arg: tuple, K: int):
 	eps_Global, N, NPB, pls = sim_arg
 	assert(len(pls) >= N)
 
@@ -562,6 +563,7 @@ def GreedyAttack(sim_arg: tuple, K: int):
 
 		## len(poisoned_list) += 1
 		poisoned_list = new_poisoned_list
+		# print(poisoned_list)
 		k1 += 1
 		k2 -= 1
 
@@ -586,11 +588,14 @@ def GreedyAttack(sim_arg: tuple, K: int):
 
 	return pls, poisoned_list
 
-def main_gen():
+def DSABlock(sim_arg: tuple, K: int):
+	return
+
+def main_gen(verbose=False):
+	eps_Global, N, NPB, benign_pls = gendata(100.0, 100, 10)
 	# eps_Global, N, NPB, benign_pls = readdata('data.csv')
-	eps_Global, N, NPB, benign_pls = gendata(30.0, 30, 10)
 	sim_arg = (eps_Global, N, NPB, benign_pls)
-	K = int(0.2 * N)
+	K = int(0.10 * N)
 	K = 7
 
 	def CallFunc(funcname):
@@ -601,22 +606,30 @@ def main_gen():
 		for i in poisoned_list:
 			assert(i in complete)
 		perc = SumPipelines(pls, poisoned_list) / (N * NPB)
-		print('%.4f' % perc, poisoned_list, end='\t')
-		print(str(funcname))
+		if verbose:
+			print('%.4f' % perc, poisoned_list, end='\t')
+			print(str(funcname))
+		return perc
 
-	# CallFunc(RandomAttack)
-	CallFunc(BlockAttack)
-	# CallFunc(BlockAttack2)
-	# CallFunc(DynamicATKable)
-	CallFunc(DynamicSeqAttack0)
-	CallFunc(DynamicSeqAttack)
-	# CallFunc(multiDynamicSeqAttack)
-	CallFunc(GreedyAttack)
+	return CallFunc(NaiveGreedy), CallFunc(BlockAttack), CallFunc(DynamicSeqAttack), CallFunc(DynamicSeqAttack0)
 
 def main_read_sim():
 	eps_Global, N, NPB, pls = readdata('data.csv')
 	sim_arg = eps_Global, N, NPB, pls
 	print(dpf.Simulation(sim_arg, True))
 
+def main_multirun(times=100):
+	perclist = []
+	for _ in range(4):
+		perclist.append([])
+	for _ in range(times):
+		perc = [0] * 4
+		perc[0], perc[1], perc[2], perc[3] = main_gen()
+		for i in range(4):
+			perclist[i].append(perc[i])
+	for i in range(4):
+		print("%.4f"%statistics.mean(perclist[i]))
+
 if __name__ == '__main__':
-	main_gen()
+	main_gen(verbose=True)
+	# main_multirun()
