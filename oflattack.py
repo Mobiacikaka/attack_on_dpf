@@ -114,182 +114,157 @@ def MaximizeAllocationAtTS(dpfsys: dpf.DPF, ) -> list[dec]:
 
 
 ## Allocation Functions
-def DynamicATKable(sim_arg, K: int):
+def RandomAttack(sim_arg: tuple, K: int):
 	eps_Global, N, NPB, pls = sim_arg
-	assert(len(pls) >= N)
+	assert(N >= K)
 
-	ds_id_list = getDominantShareIDList(pls)
-
-	dpfsys = dpf.DPF(eps_Global, N, NPB)
-	candi = N - K + 1
-	ts = -1
 	poisoned_list = []
-	while K > 0:
-		ts += 1
-		candi -= 1
-		ctrl = candi / K
+	choices = list(range(N))
+	for _ in range(K):
+		choice = random.choice(choices)
+		choices.remove(choice)
+		poisoned_list.append(choice)
 
-		new_dpfsys, finished_pls = dpf.pre_Allocation_one(copy.deepcopy(dpfsys), pls[ts])
-		insert_flag = False
-
-		# Check if insert
-		for finished_pl in finished_pls:
-			ds_value = pls[finished_pl][ds_id_list[finished_pl]]
-			if ds_value <= ctrl:
-				if finished_pl == ts:
-					new_dpfsys.deComplete(pls[finished_pl], finished_pl)
-				pass
-			else:
-				insert_flag = True
-				new_dpfsys.deComplete(pls[finished_pl], finished_pl)
-
-		# Min Dominant Share
-		dsmi = eps_Global
-		for pl_no, pl in new_dpfsys.wp.items():
-			ds_value = pl[ds_id_list[pl_no]]
-			if pl_no == ts:
-				continue
-			if not new_dpfsys.CanRun(pl):
-				continue
-			if ds_value <= ctrl:
-				continue
-			if ds_value < dsmi:
-				dsmi = ds_value
-
-		if ts + K >= N:
-			insert_flag = True
-
-		if insert_flag:
-			poisoned_pl = copy.deepcopy(new_dpfsys.eps_U)
-			for j in range(NPB):
-				if poisoned_pl[j] >= dsmi:
-					poisoned_pl[j] = dsmi - alpha
+	poisoned_list.sort()
+	dpfsys = dpf.DPF(eps_Global, N, NPB)
+	for ts in range(N):
+		## Insert Poisoned Pipelines
+		if ts in poisoned_list:
+			poisoned_pl = MaximizeAllocationAtTS(dpfsys)
 			pls.insert(ts, poisoned_pl)
-			ds_id_list.insert(ts, 0)
-			poisoned_list.append(ts)
-			K -= 1
-			candi += 1
 
+		## Do Normal Allocation
 		dpfsys.AddToWaiting(pls[ts])
 		dpfsys.OnPipelineArrival(pls[ts])
 		finished_pls_seq = dpfsys.OnSchedulerTimer()
-		if insert_flag and ts not in finished_pls_seq:
-			print(ts, finished_pls_seq)
-			print(pls[ts])
-			print(dpfsys.eps_U)
-			for pl_no in finished_pls_seq:
-				print(pls[pl_no])
-			assert(0)
+		if ts in poisoned_list:
+			assert(ts in finished_pls_seq)
 
 	return pls, poisoned_list
 
-def DynamicSeqAttack0(sim_arg: tuple, K: int):
+def GreedyTheRecalculation(sim_arg: tuple, K: int):
 	eps_Global, N, NPB, pls = sim_arg
-	assert(len(pls) >= N)
+	assert(len(pls) + K >= N)
 
-	ds_id_list = getDominantShareIDList(pls)
-	step = dec(dec_format % (eps_Global / N))
-
-	ts = -1
 	poisoned_list = []
-	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
 	k1 = 0
 	k2 = K
 	while k2 > 0:
-		ts += 1
-		insert_flag = False
-
-		unallocated_eps_list = copy.deepcopy(dpfsys.eps_U)
-		for j in range(NPB):
-			unallocated_eps_list[j] += step
-		unallocated_eps_list2 = copy.deepcopy(unallocated_eps_list)
-		wp = copy.deepcopy(dpfsys.wp)
-		wp2 = copy.deepcopy(wp)
-		if ts + k2 < N:
-			wp[ts] = pls[ts]
-		sorted_pipelines = sorted(list(wp.keys()), key=lambda x: dpfsys.DominantShareList(wp.get(x)))
-		for seq in sorted_pipelines:
-			pl = wp.get(seq)
-			assert(pl != None)
-
-			if not dpfsys.CanRun(pl, unallocated_eps_list):
+		new_poisoned_list = []
+		new_sum = 0
+		for insert_ts in range(N-K+1):
+			if insert_ts in poisoned_list:
 				continue
 
-			def AttackAble(seq):
-				ds_id = ds_id_list[seq]
-				assert(pl != None)
-				return ((N-ts-k2)/k2) < pl[ds_id]
+			## generate insertion list
+			tmp_poisoned_list = copy.deepcopy(poisoned_list)
+			tmp_poisoned_list.append(insert_ts)
+			tmp_poisoned_list.sort()
 
-			if AttackAble(seq):
-				insert_flag = True
-				break
-			else:
-				for j in range(NPB):
-					unallocated_eps_list[j] -= pl[j]
-
-		unallocated_eps_list = unallocated_eps_list2
-		wp = wp2
-		sorted_pipelines = sorted(list(wp.keys()), key=lambda x: dpfsys.DominantShareList(wp.get(x)))
-		ds = eps_Global
-		if insert_flag:
-			for seq in sorted_pipelines:
-				pl = wp.get(seq)
-				assert(pl != None)
-
-				if not dpfsys.CanRun(pl, unallocated_eps_list):
-					continue
-
-				def AttackAble(seq):
-					ds_id = ds_id_list[seq]
-					assert(pl != None)
-					return ((N-ts-k2)/k2) < pl[ds_id]
-
-				if AttackAble(seq):
-					insert_flag = True
-					ds = pl[ds_id_list[seq]]
+			## greedy on each position
+			tmp_sum = 0
+			dpfsys = dpf.DPF(eps_Global, N, NPB)
+			for i in range(N-K+1):
+				if i in tmp_poisoned_list:
+					tmp_poisoned_pl = MaximizeAllocationAtTS(dpfsys)
+					tmp_sum += sum(tmp_poisoned_pl)
+					dpfsys.AddToWaiting(tmp_poisoned_pl)
+					dpfsys.OnPipelineArrival(tmp_poisoned_pl)
+					dpfsys.OnSchedulerTimer()
+				if i >= N-K:
 					break
-				else:
-					for j in range(NPB):
-						unallocated_eps_list[j] -= pl[j]
+				dpfsys.AddToWaiting(pls[i])
+				dpfsys.OnPipelineArrival(pls[i])
+				dpfsys.OnSchedulerTimer()
 
-		# if there are poisoned pipelines left, insert anyway
-		if ts + k2 >= N:
-			insert_flag = True
-			if sorted_pipelines != []:
-				seq = sorted_pipelines[0]
-				ds = pls[seq][ds_id_list[seq]]
-			else:
-				ds = eps_Global
-		if insert_flag == True:
-			poisoned_pl = []
-			for j in range(NPB):
-				if unallocated_eps_list[j] >= ds:
-					poisoned_pl.append(ds - alpha)
-				else:
-					poisoned_pl.append(unallocated_eps_list[j])
-			pls.insert(ts, poisoned_pl)
-			ds_id_list.insert(ts, 0)
-			poisoned_list.append(ts)
-			k1 += 1
-			k2 -= 1
+			if tmp_sum > new_sum:
+				new_sum = tmp_sum
+				new_poisoned_list = tmp_poisoned_list
 
-		# Do normal Allocation
-		dpfsys.AddToWaiting(pls[ts])
-		dpfsys.OnPipelineArrival(pls[ts])
+		## len(poisoned_list) += 1
+		poisoned_list = new_poisoned_list
+		# print(poisoned_list)
+		k1 += 1
+		k2 -= 1
+
+	assert(len(poisoned_list) == K)
+	k1 = 0
+	for i in range(K):
+		poisoned_list[i] += k1
+		k1 += 1
+
+	k1 = 0
+	k2 = K
+	dpfsys = dpf.DPF(eps_Global, N, NPB)
+	for i in range(N):
+		if i in poisoned_list:
+			poisoned_pl = MaximizeAllocationAtTS(dpfsys)
+			pls.insert(i, poisoned_pl)
+		dpfsys.AddToWaiting(pls[i])
+		dpfsys.OnPipelineArrival(pls[i])
 		finished_pls_seq = dpfsys.OnSchedulerTimer()
-		if insert_flag and ts not in finished_pls_seq:
-			print(ts, finished_pls_seq)
-			for pl_no in finished_pls_seq:
-				PrintPipeline(pls[pl_no])
-			PrintPipeline(dpfsys.eps_U)
-			assert(0)
+		if i in poisoned_list:
+			assert(i in finished_pls_seq)
 
 	return pls, poisoned_list
 
-def DynamicSeqAttack(sim_arg: tuple, K: int, transzendental: tuple[list, list]=([], [])):
+def BlockGreedy(sim_arg: tuple, K: int):
+	eps_Global, N, NPB, pls = sim_arg
+	assert(len(pls) + K >= N)
+
+	ds_id_list = getDominantShareIDList(pls)
+
+	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
+	k1 = 0
+	k2 = K
+	start = 0
+	end = 0
+	poisoned_list = []
+	while k2 > 0:
+		## Find The Best Insert Position In The Next Several Pipelines
+		start = end
+		end += (N - K) / K
+		dpfsys2 = copy.deepcopy(dpfsys)
+		poisoned_pl = []
+		insert_ts = 0
+		for ts2 in range(int(start)+k1, int(end)+k1+1):
+			if ts2 >= N:
+				break
+
+			tmp_poisoned_pl = MaximizeAllocationAtTS(dpfsys2)
+			if sum(tmp_poisoned_pl) > sum(poisoned_pl):
+				poisoned_pl = tmp_poisoned_pl
+				insert_ts = ts2
+
+			dpfsys2.AddToWaiting(pls[ts2])
+			dpfsys2.OnPipelineArrival(pls[ts2])
+			dpfsys2.OnSchedulerTimer()
+
+		## Insert
+		pls.insert(insert_ts, poisoned_pl)
+		ds_id_list.insert(insert_ts, 0)
+		poisoned_list.append(insert_ts)
+		k1 += 1
+		k2 -= 1
+
+		## Do Normal Allocation
+		for ts in range(int(start)+k1-1, int(end)+k1):
+			if ts >= N:
+				break
+			dpfsys.AddToWaiting(pls[ts])
+			dpfsys.OnPipelineArrival(pls[ts])
+			finished_pls_seq = dpfsys.OnSchedulerTimer()
+			# print(f'{ts}:eps\t', dpfsys.eps_U)
+			if ts == insert_ts:
+				# print(f'{ts}\t', pls[ts])
+				assert(insert_ts in finished_pls_seq)
+
+	return pls, poisoned_list
+
+def DynamicSequentialAttack_std(sim_arg: tuple, K: int, transzendental: tuple[list, list]=([], [])):
 	eps_Global, N, NPB, pls = sim_arg
 	pre_pls, pre_complete = transzendental
-	assert(len(pls) >= N)
+	assert(len(pls) + K >= N)
 
 	ds_id_list = getDominantShareIDList(pls)
 	step = dec(dec_format % (eps_Global / N))
@@ -373,6 +348,111 @@ def DynamicSeqAttack(sim_arg: tuple, K: int, transzendental: tuple[list, list]=(
 
 	return pls, poisoned_list
 
+def DynamicSequentialAttack_mod(sim_arg: tuple, K: int):
+	eps_Global, N, NPB, pls = sim_arg
+	assert(len(pls) + K >= N)
+
+	ds_id_list = getDominantShareIDList(pls)
+	step = dec(dec_format % (eps_Global / N))
+
+	ts = -1
+	poisoned_list = []
+	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
+	k1 = 0
+	k2 = K
+	while k2 > 0:
+		ts += 1
+		print("ts", ts)
+		insert_flag = False
+
+		unallocated_eps_list = copy.deepcopy(dpfsys.eps_U)
+		for j in range(NPB):
+			unallocated_eps_list[j] += step
+		unallocated_eps_list2 = copy.deepcopy(unallocated_eps_list)
+		wp = copy.deepcopy(dpfsys.wp)
+		wp2 = copy.deepcopy(wp)
+		if ts + k2 < N:
+			wp[ts] = pls[ts]
+		sorted_pipelines = sorted(list(wp.keys()), key=lambda x: dpfsys.DominantShareList(wp.get(x)))
+		for seq in sorted_pipelines:
+			pl = wp.get(seq)
+			assert(pl != None)
+
+			if not dpfsys.CanRun(pl, unallocated_eps_list):
+				continue
+
+			def AttackAble(seq):
+				ds_id = ds_id_list[seq]
+				assert(pl != None)
+				return ((N-ts-k2)/k2) < pl[ds_id]
+
+			print(seq, "CanRun")
+			if AttackAble(seq):
+				insert_flag = True
+				break
+			else:
+				for j in range(NPB):
+					unallocated_eps_list[j] -= pl[j]
+
+		unallocated_eps_list = unallocated_eps_list2
+		wp = wp2
+		sorted_pipelines = sorted(list(wp.keys()), key=lambda x: dpfsys.DominantShareList(wp.get(x)))
+		ds = eps_Global
+		if insert_flag:
+			for seq in sorted_pipelines:
+				pl = wp.get(seq)
+				assert(pl != None)
+
+				if not dpfsys.CanRun(pl, unallocated_eps_list):
+					continue
+
+				def AttackAble(seq):
+					ds_id = ds_id_list[seq]
+					assert(pl != None)
+					return ((N-ts-k2)/k2) < pl[ds_id]
+
+				if AttackAble(seq):
+					insert_flag = True
+					ds = pl[ds_id_list[seq]]
+					break
+				else:
+					for j in range(NPB):
+						unallocated_eps_list[j] -= pl[j]
+
+		# if there are poisoned pipelines left, insert anyway
+		if ts + k2 >= N:
+			insert_flag = True
+			if sorted_pipelines != []:
+				seq = sorted_pipelines[0]
+				ds = pls[seq][ds_id_list[seq]]
+			else:
+				ds = eps_Global
+		if insert_flag == True:
+			poisoned_pl = []
+			for j in range(NPB):
+				if unallocated_eps_list[j] >= ds:
+					poisoned_pl.append(ds - alpha)
+				else:
+					poisoned_pl.append(unallocated_eps_list[j])
+			pls.insert(ts, poisoned_pl)
+			ds_id_list.insert(ts, 0)
+			poisoned_list.append(ts)
+			k1 += 1
+			k2 -= 1
+
+		# Do normal Allocation
+		dpfsys.AddToWaiting(pls[ts])
+		dpfsys.OnPipelineArrival(pls[ts])
+		finished_pls_seq = dpfsys.OnSchedulerTimer()
+		if insert_flag and ts not in finished_pls_seq:
+			PrintPipelines(pls, N)
+			print(poisoned_list)
+			print(ts, finished_pls_seq)
+			print(dpfsys.eps_U)
+			assert(0)
+
+	return pls, poisoned_list
+
 def multiDynamicSeqAttack(sim_arg: tuple, K: int, times: int=2):
 	eps_Global, N, NPB, pls = sim_arg
 	poisoned_list = []
@@ -380,7 +460,7 @@ def multiDynamicSeqAttack(sim_arg: tuple, K: int, times: int=2):
 	pre_pls = []
 	pre_complete = []
 	for _ in range(times):
-		pls, poisoned_list = DynamicSeqAttack(copy.deepcopy(sim_arg), K, (pre_pls, pre_complete))
+		pls, poisoned_list = DynamicSequentialAttack_std(copy.deepcopy(sim_arg), K, (pre_pls, pre_complete))
 		complete = dpf.Simulation(sim_arg)
 		complete.sort()
 		poisoned_list.sort()
@@ -388,215 +468,11 @@ def multiDynamicSeqAttack(sim_arg: tuple, K: int, times: int=2):
 
 	return pls, poisoned_list
 
-def RandomAttack(sim_arg: tuple, K: int):
-	eps_Global, N, NPB, pls = sim_arg
-	assert(N >= K)
-
-	poisoned_list = []
-	choices = list(range(N))
-	for _ in range(K):
-		choice = random.choice(choices)
-		choices.remove(choice)
-		poisoned_list.append(choice)
-
-	poisoned_list.sort()
-	dpfsys = dpf.DPF(eps_Global, N, NPB)
-	for ts in range(N):
-		## Insert Poisoned Pipelines
-		if ts in poisoned_list:
-			poisoned_pl = MaximizeAllocationAtTS(dpfsys)
-			pls.insert(ts, poisoned_pl)
-
-		## Do Normal Allocation
-		dpfsys.AddToWaiting(pls[ts])
-		dpfsys.OnPipelineArrival(pls[ts])
-		finished_pls_seq = dpfsys.OnSchedulerTimer()
-		if ts in poisoned_list:
-			assert(ts in finished_pls_seq)
-
-	return pls, poisoned_list
-
-def BlockAttack(sim_arg: tuple, K: int):
-	eps_Global, N, NPB, pls = sim_arg
-	assert(len(pls) >= N)
-
-	ds_id_list = getDominantShareIDList(pls)
-
-	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
-	k1 = 0
-	k2 = K
-	start = 0
-	end = 0
-	poisoned_list = []
-	while k2 > 0:
-		## Find The Best Insert Position In The Next Several Pipelines
-		start = end
-		end += (N - K) / K
-		dpfsys2 = copy.deepcopy(dpfsys)
-		poisoned_pl = []
-		insert_ts = 0
-		for ts2 in range(int(start)+k1, int(end)+k1+1):
-			if ts2 >= N:
-				break
-
-			tmp_poisoned_pl = MaximizeAllocationAtTS(dpfsys2)
-			if sum(tmp_poisoned_pl) > sum(poisoned_pl):
-				poisoned_pl = tmp_poisoned_pl
-				insert_ts = ts2
-
-			dpfsys2.AddToWaiting(pls[ts2])
-			dpfsys2.OnPipelineArrival(pls[ts2])
-			dpfsys2.OnSchedulerTimer()
-
-		## Insert
-		pls.insert(insert_ts, poisoned_pl)
-		ds_id_list.insert(insert_ts, 0)
-		poisoned_list.append(insert_ts)
-		k1 += 1
-		k2 -= 1
-
-		## Do Normal Allocation
-		for ts in range(int(start)+k1-1, int(end)+k1):
-			if ts >= N:
-				break
-			dpfsys.AddToWaiting(pls[ts])
-			dpfsys.OnPipelineArrival(pls[ts])
-			finished_pls_seq = dpfsys.OnSchedulerTimer()
-			# print(f'{ts}:eps\t', dpfsys.eps_U)
-			if ts == insert_ts:
-				# print(f'{ts}\t', pls[ts])
-				assert(insert_ts in finished_pls_seq)
-
-	return pls, poisoned_list
-
-def BlockAttack2(sim_arg: tuple, K: int):
-	eps_Global, N, NPB, pls = sim_arg
-	assert(len(pls) >= N)
-
-	ds_id_list = getDominantShareIDList(pls)
-
-	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
-	k1 = 0
-	k2 = K
-	start = 0
-	end = 0
-	poisoned_list = []
-	insert_ts = -1
-	while k2 > 0:
-		## Find The Best Insert Position In The Next Several Pipelines
-		start = insert_ts + 1
-		end += (N - K) / K
-		dpfsys2 = copy.deepcopy(dpfsys)
-		poisoned_pl = []
-		for ts2 in range(start, int(end)+k1+1):
-			if ts2 >= N:
-				break
-
-			tmp_poisoned_pl = MaximizeAllocationAtTS(dpfsys2)
-			if sum(tmp_poisoned_pl) > sum(poisoned_pl):
-				poisoned_pl = tmp_poisoned_pl
-				insert_ts = ts2
-
-			dpfsys2.AddToWaiting(pls[ts2])
-			dpfsys2.OnPipelineArrival(pls[ts2])
-			dpfsys2.OnSchedulerTimer()
-
-		## Insert
-		pls.insert(insert_ts, poisoned_pl)
-		ds_id_list.insert(insert_ts, 0)
-		poisoned_list.append(insert_ts)
-		k1 += 1
-		k2 -= 1
-
-		## Do Normal Allocation
-		for ts in range(start, insert_ts+1):
-			if ts >= N:
-				break
-			dpfsys.AddToWaiting(pls[ts])
-			dpfsys.OnPipelineArrival(pls[ts])
-			finished_pls_seq = dpfsys.OnSchedulerTimer()
-			# print(f'{ts}:eps\t', dpfsys.eps_U)
-			if ts == insert_ts:
-				# print(f'{ts}\t', pls[ts])
-				assert(insert_ts in finished_pls_seq)
-
-	return pls, poisoned_list
-
-def NaiveGreedy(sim_arg: tuple, K: int):
-	eps_Global, N, NPB, pls = sim_arg
-	assert(len(pls) >= N)
-
-	poisoned_list = []
-	k1 = 0
-	k2 = K
-	while k2 > 0:
-		new_poisoned_list = []
-		new_sum = 0
-		for insert_ts in range(N-K+1):
-			if insert_ts in poisoned_list:
-				continue
-
-			## generate insertion list
-			tmp_poisoned_list = copy.deepcopy(poisoned_list)
-			tmp_poisoned_list.append(insert_ts)
-			tmp_poisoned_list.sort()
-
-			## greedy on each position
-			tmp_sum = 0
-			dpfsys = dpf.DPF(eps_Global, N, NPB)
-			for i in range(N-K+1):
-				if i in tmp_poisoned_list:
-					tmp_poisoned_pl = MaximizeAllocationAtTS(dpfsys)
-					tmp_sum += sum(tmp_poisoned_pl)
-					dpfsys.AddToWaiting(tmp_poisoned_pl)
-					dpfsys.OnPipelineArrival(tmp_poisoned_pl)
-					dpfsys.OnSchedulerTimer()
-				if i >= N-K:
-					break
-				dpfsys.AddToWaiting(pls[i])
-				dpfsys.OnPipelineArrival(pls[i])
-				dpfsys.OnSchedulerTimer()
-
-			if tmp_sum > new_sum:
-				new_sum = tmp_sum
-				new_poisoned_list = tmp_poisoned_list
-
-		## len(poisoned_list) += 1
-		poisoned_list = new_poisoned_list
-		# print(poisoned_list)
-		k1 += 1
-		k2 -= 1
-
-	assert(len(poisoned_list) == K)
-	k1 = 0
-	for i in range(K):
-		poisoned_list[i] += k1
-		k1 += 1
-
-	k1 = 0
-	k2 = K
-	dpfsys = dpf.DPF(eps_Global, N, NPB)
-	for i in range(N):
-		if i in poisoned_list:
-			poisoned_pl = MaximizeAllocationAtTS(dpfsys)
-			pls.insert(i, poisoned_pl)
-		dpfsys.AddToWaiting(pls[i])
-		dpfsys.OnPipelineArrival(pls[i])
-		finished_pls_seq = dpfsys.OnSchedulerTimer()
-		if i in poisoned_list:
-			assert(i in finished_pls_seq)
-
-	return pls, poisoned_list
-
-def DSABlock(sim_arg: tuple, K: int):
-	return
-
-def main_gen(verbose=False):
-	eps_Global, N, NPB, benign_pls = gendata(100.0, 100, 10)
-	# eps_Global, N, NPB, benign_pls = readdata('data.csv')
+def main_gen(bpn, Kperc, step=1.0, verbose=False):
+	eps_Global, N, NPB, benign_pls = gendata(bpn * step, bpn, 10)
+	eps_Global, N, NPB, benign_pls = readdata('data.csv')
 	sim_arg = (eps_Global, N, NPB, benign_pls)
-	K = int(0.10 * N)
-	K = 7
+	K = int(Kperc * 40)
 
 	def CallFunc(funcname):
 		pls, poisoned_list = funcname(copy.deepcopy(sim_arg), K)
@@ -609,27 +485,25 @@ def main_gen(verbose=False):
 		if verbose:
 			print('%.4f' % perc, poisoned_list, end='\t')
 			print(str(funcname))
+			PrintPipelines(pls)
 		return perc
 
-	return CallFunc(NaiveGreedy), CallFunc(BlockAttack), CallFunc(DynamicSeqAttack), CallFunc(DynamicSeqAttack0)
-
-def main_read_sim():
-	eps_Global, N, NPB, pls = readdata('data.csv')
-	sim_arg = eps_Global, N, NPB, pls
-	print(dpf.Simulation(sim_arg, True))
+	# return 0, CallFunc(BlockAttack2), CallFunc(DynamicSeqAttack0), CallFunc(DynamicSeqAttack)
+	return 0, 0, 0, 0
 
 def main_multirun(times=100):
 	perclist = []
 	for _ in range(4):
 		perclist.append([])
-	for _ in range(times):
+	for time in range(times):
+		print(time)
 		perc = [0] * 4
-		perc[0], perc[1], perc[2], perc[3] = main_gen()
+		perc[0], perc[1], perc[2], perc[3] = main_gen(bpn=40, Kperc=0.1, verbose=True)
 		for i in range(4):
 			perclist[i].append(perc[i])
 	for i in range(4):
 		print("%.4f"%statistics.mean(perclist[i]))
 
 if __name__ == '__main__':
-	main_gen(verbose=True)
-	# main_multirun()
+	# main_gen(bpn=100, Kperc=0.05, verbose=True)
+	main_multirun(times=1)
