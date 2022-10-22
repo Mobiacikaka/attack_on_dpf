@@ -362,20 +362,16 @@ def DynamicSequentialAttack_mod(sim_arg: tuple, K: int):
 	k2 = K
 	while k2 > 0:
 		ts += 1
-		print("ts", ts)
-		insert_flag = False
 
 		unallocated_eps_list = copy.deepcopy(dpfsys.eps_U)
 		for j in range(NPB):
 			unallocated_eps_list[j] += step
-		unallocated_eps_list2 = copy.deepcopy(unallocated_eps_list)
-		wp = copy.deepcopy(dpfsys.wp)
-		wp2 = copy.deepcopy(wp)
-		if ts + k2 < N:
-			wp[ts] = pls[ts]
-		sorted_pipelines = sorted(list(wp.keys()), key=lambda x: dpfsys.DominantShareList(wp.get(x)))
+
+		sorted_pipelines = sorted(list(dpfsys.wp.keys()), key=lambda x: dpfsys.DominantShareList(dpfsys.wp.get(x)))
+		insert_flag = False
+		ds = 0
 		for seq in sorted_pipelines:
-			pl = wp.get(seq)
+			pl = dpfsys.wp.get(seq)
 			assert(pl != None)
 
 			if not dpfsys.CanRun(pl, unallocated_eps_list):
@@ -386,38 +382,13 @@ def DynamicSequentialAttack_mod(sim_arg: tuple, K: int):
 				assert(pl != None)
 				return ((N-ts-k2)/k2) < pl[ds_id]
 
-			print(seq, "CanRun")
 			if AttackAble(seq):
 				insert_flag = True
+				ds = pl[ds_id_list[seq]]
 				break
 			else:
 				for j in range(NPB):
 					unallocated_eps_list[j] -= pl[j]
-
-		unallocated_eps_list = unallocated_eps_list2
-		wp = wp2
-		sorted_pipelines = sorted(list(wp.keys()), key=lambda x: dpfsys.DominantShareList(wp.get(x)))
-		ds = eps_Global
-		if insert_flag:
-			for seq in sorted_pipelines:
-				pl = wp.get(seq)
-				assert(pl != None)
-
-				if not dpfsys.CanRun(pl, unallocated_eps_list):
-					continue
-
-				def AttackAble(seq):
-					ds_id = ds_id_list[seq]
-					assert(pl != None)
-					return ((N-ts-k2)/k2) < pl[ds_id]
-
-				if AttackAble(seq):
-					insert_flag = True
-					ds = pl[ds_id_list[seq]]
-					break
-				else:
-					for j in range(NPB):
-						unallocated_eps_list[j] -= pl[j]
 
 		# if there are poisoned pipelines left, insert anyway
 		if ts + k2 >= N:
@@ -445,36 +416,20 @@ def DynamicSequentialAttack_mod(sim_arg: tuple, K: int):
 		dpfsys.OnPipelineArrival(pls[ts])
 		finished_pls_seq = dpfsys.OnSchedulerTimer()
 		if insert_flag and ts not in finished_pls_seq:
-			PrintPipelines(pls, N)
-			print(poisoned_list)
-			print(ts, finished_pls_seq)
-			print(dpfsys.eps_U)
+			print("failed", pls[ts])
+			print("spare", dpfsys.eps_U)
 			assert(0)
 
 	return pls, poisoned_list
 
-def multiDynamicSeqAttack(sim_arg: tuple, K: int, times: int=2):
-	eps_Global, N, NPB, pls = sim_arg
-	poisoned_list = []
-	pls = []
-	pre_pls = []
-	pre_complete = []
-	for _ in range(times):
-		pls, poisoned_list = DynamicSequentialAttack_std(copy.deepcopy(sim_arg), K, (pre_pls, pre_complete))
-		complete = dpf.Simulation(sim_arg)
-		complete.sort()
-		poisoned_list.sort()
-		pre_pls, pre_complete = pls, complete
-
-	return pls, poisoned_list
-
+## Run Functions
 def main_gen(bpn, Kperc, step=1.0, verbose=False):
 	eps_Global, N, NPB, benign_pls = gendata(bpn * step, bpn, 10)
-	eps_Global, N, NPB, benign_pls = readdata('data.csv')
+	# eps_Global, N, NPB, benign_pls = readdata('data.csv')
 	sim_arg = (eps_Global, N, NPB, benign_pls)
-	K = int(Kperc * 40)
+	K = int(Kperc * bpn)
 
-	def CallFunc(funcname):
+	def CallFunc(funcname) -> float:
 		pls, poisoned_list = funcname(copy.deepcopy(sim_arg), K)
 		# PrintPipelines(pls, N)
 		sim_arg1 = (eps_Global, N, NPB, pls)
@@ -486,19 +441,25 @@ def main_gen(bpn, Kperc, step=1.0, verbose=False):
 			print('%.4f' % perc, poisoned_list, end='\t')
 			print(str(funcname))
 			PrintPipelines(pls)
-		return perc
+		return float(perc)
 
 	# return 0, CallFunc(BlockAttack2), CallFunc(DynamicSeqAttack0), CallFunc(DynamicSeqAttack)
-	return 0, 0, 0, 0
+	return \
+		CallFunc(GreedyTheRecalculation), \
+		0, 0, 0
+		# CallFunc(BlockGreedy), \
+		# CallFunc(DynamicSequentialAttack_std), \
+		# CallFunc(DynamicSequentialAttack_mod)
 
 def main_multirun(times=100):
 	perclist = []
 	for _ in range(4):
 		perclist.append([])
 	for time in range(times):
-		print(time)
-		perc = [0] * 4
-		perc[0], perc[1], perc[2], perc[3] = main_gen(bpn=40, Kperc=0.1, verbose=True)
+		# print(time)
+		perc = [0.0] * 4
+		perc[0], perc[1], perc[2], perc[3] = \
+			main_gen(bpn=100, Kperc=0.20, verbose=False)
 		for i in range(4):
 			perclist[i].append(perc[i])
 	for i in range(4):
@@ -506,4 +467,4 @@ def main_multirun(times=100):
 
 if __name__ == '__main__':
 	# main_gen(bpn=100, Kperc=0.05, verbose=True)
-	main_multirun(times=1)
+	main_multirun(times=10)
