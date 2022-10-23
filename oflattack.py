@@ -441,13 +441,13 @@ def main_gen(N, M, K, step=1.0, sigma=1.0, verbose=False) -> list:
 		perc = SumPipelines(pls, poisoned_list) / (N * NPB)
 		if verbose:
 			print(str(funcname))
-			print('%.4f' % perc, end='\t')
 			print(poisoned_list)
+			print('%.4f' % perc)
 			PrintPipelines(pls)
 		return float(perc)
 
 	return [
-		# CallFunc(GreedyTheRecalculation),
+		CallFunc(GreedyTheRecalculation),
 		CallFunc(BlockGreedy),
 		CallFunc(DynamicSequentialAttack_std),
 		CallFunc(DynamicSequentialAttack_mod),
