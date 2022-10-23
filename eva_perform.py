@@ -11,6 +11,11 @@ def onerun(sigma, N, M, K, step, time):
 	param = f'{sigma}\n{N}\n{M}\n{K}\n{step}\n'
 	os.system(f'echo "{param}" | ./oflattack.py > "EVALUATION/{foldername}/{time}.csv"')
 
+def tenrun(sigma, N, M, K, step, time):
+	for i in range(10):
+		print("sigma", sigma, "N", N, "M", M, "K", K, "step", step, "time", time)
+		onerun(sigma, N, M, K, step, time * 10 + i)
+
 def run():
 	sigma_list = [1.0] # Exponential distribution lambda
 	N_list = list(range(50, 250, 50)) # N benign pipelines
@@ -19,7 +24,7 @@ def run():
 	step_list = [1.0]
 	times = 100
 
-	N_list = [100]
+	N_list = [150]
 
 	threads = []
 	for sigma in sigma_list:
@@ -28,12 +33,11 @@ def run():
 				for Kperc in Kperc_list:
 					K = int(Kperc * N)
 					for step in step_list:
-						for time in range(times):
-							print("sigma", sigma, "N", N, "M", M, "K", K, "step", step, "time", time)
-							t = Thread(target=onerun, args=(sigma, N, M, K, step, time))
+						for time in range(times//10):
+							t = Thread(target=tenrun, args=(sigma, N, M, K, step, time))
 							threads.append(t)
 							t.start()
-							if len(threads) >= 10:
+							if len(threads) >= 30:
 								for t in threads:
 									t.join()
 								threads = []
