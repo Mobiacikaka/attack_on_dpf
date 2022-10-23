@@ -24,12 +24,12 @@ def return_eps_U_list(sim_arg: tuple) -> list[list[dec]]:
 
 	return eps_U_list
 
-def gendata(eps_Global, N, NPB) -> tuple:
+def gendata(eps_Global, N, NPB, sigma=1.0) -> tuple:
 	benign_pls	= []
 	for _ in range(int(N * 1.1)):
 		pl = []
 		for _ in range(NPB):
-			rnd = random.expovariate(1.0)
+			rnd = random.expovariate(sigma)
 			pl.append(dec(dec_format % rnd))
 		benign_pls.append(pl)
 	return eps_Global, N, NPB, benign_pls
@@ -47,7 +47,9 @@ def readdata(filename: str='benign_pls.csv') -> tuple[float, int, int, list[list
 	return float(len(benign_pls)), len(benign_pls), len(benign_pls[0]), benign_pls
 
 def PrintPipeline(pl: list[dec]):
-	print([dec_format % item for item in pl])
+	for item in pl:
+		print(float(item), end='\t')
+	print()
 
 def PrintPipelines(pls: list[list[dec]], N: int=0):
 	if N == 0:
@@ -423,48 +425,57 @@ def DynamicSequentialAttack_mod(sim_arg: tuple, K: int):
 	return pls, poisoned_list
 
 ## Run Functions
-def main_gen(bpn, Kperc, step=1.0, verbose=False):
-	eps_Global, N, NPB, benign_pls = gendata(bpn * step, bpn, 10)
+def main_gen(N, M, K, step=1.0, sigma=1.0, verbose=False) -> list:
+	eps_Global, N, NPB, benign_pls = gendata(N* step, N, M, sigma=sigma)
 	# eps_Global, N, NPB, benign_pls = readdata('data.csv')
 	sim_arg = (eps_Global, N, NPB, benign_pls)
-	K = int(Kperc * bpn)
+	if verbose:
+		PrintPipelines(benign_pls, N)
 
 	def CallFunc(funcname) -> float:
 		pls, poisoned_list = funcname(copy.deepcopy(sim_arg), K)
-		# PrintPipelines(pls, N)
 		sim_arg1 = (eps_Global, N, NPB, pls)
 		complete = dpf.Simulation(sim_arg1)
 		for i in poisoned_list:
 			assert(i in complete)
 		perc = SumPipelines(pls, poisoned_list) / (N * NPB)
 		if verbose:
-			print('%.4f' % perc, poisoned_list, end='\t')
 			print(str(funcname))
+			print('%.4f' % perc, end='\t')
+			print(poisoned_list)
 			PrintPipelines(pls)
 		return float(perc)
 
-	# return 0, CallFunc(BlockAttack2), CallFunc(DynamicSeqAttack0), CallFunc(DynamicSeqAttack)
-	return \
-		CallFunc(GreedyTheRecalculation), \
-		0, 0, 0
-		# CallFunc(BlockGreedy), \
-		# CallFunc(DynamicSequentialAttack_std), \
-		# CallFunc(DynamicSequentialAttack_mod)
+	return [
+		# CallFunc(GreedyTheRecalculation),
+		CallFunc(BlockGreedy),
+		CallFunc(DynamicSequentialAttack_std),
+		CallFunc(DynamicSequentialAttack_mod),
+	]
+
+def main_onerun():
+	sigma = float(input())
+	N = int(input())
+	M = int(input())
+	K = int(input())
+	step = float(input())
+	main_gen(N, M, K, step, sigma=sigma, verbose=True)
 
 def main_multirun(times=100):
 	perclist = []
-	for _ in range(4):
-		perclist.append([])
 	for time in range(times):
-		# print(time)
-		perc = [0.0] * 4
-		perc[0], perc[1], perc[2], perc[3] = \
-			main_gen(bpn=100, Kperc=0.20, verbose=False)
-		for i in range(4):
+		# if time % 10 == 0:
+		# 	print(time)
+		N = 40
+		perc = main_gen(N=N, M=10, K=int(N * 0.2), verbose=True)
+		for i in range(len(perc)):
+			if i >= len(perclist):
+				perclist.append([])
 			perclist[i].append(perc[i])
-	for i in range(4):
+	for i in range(len(perclist)):
 		print("%.4f"%statistics.mean(perclist[i]))
 
 if __name__ == '__main__':
 	# main_gen(bpn=100, Kperc=0.05, verbose=True)
-	main_multirun(times=10)
+	# main_multirun(times=1)
+	main_onerun()
