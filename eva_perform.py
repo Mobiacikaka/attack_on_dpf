@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # vim:ts=2:sw=2:noet
 
-from threading import Thread
+from multiprocessing import Pool
 import numpy as np
 import os
 
@@ -24,9 +24,11 @@ def run():
 	step_list = [1.0]
 	times = 100
 
-	N_list = [150]
+	N_list = [50]
+	M_list = [25, 30]
+	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
 
-	threads = []
+	args = []
 	for sigma in sigma_list:
 		for N in N_list:
 			for M in M_list:
@@ -34,13 +36,12 @@ def run():
 					K = int(Kperc * N)
 					for step in step_list:
 						for time in range(times//10):
-							t = Thread(target=tenrun, args=(sigma, N, M, K, step, time))
-							threads.append(t)
-							t.start()
-							if len(threads) >= 30:
-								for t in threads:
-									t.join()
-								threads = []
+							args.append((sigma, N, M, K, step, time))
+
+	pool = Pool(16)
+	pool.starmap(tenrun, args)
+	pool.close()
+	pool.join()
 
 if __name__ == '__main__':
 	run()
