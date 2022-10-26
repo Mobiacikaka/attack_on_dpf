@@ -10,7 +10,7 @@ from dpf import dec_format
 alpha = dec(dec_format % (1 / 100))
 
 ## Utility Functions
-def return_eps_U_list(sim_arg: tuple) -> list[list[dec]]:
+def return_eps_U_list(sim_arg: tuple) -> list:
 	eps_Global, N, NPB, benign_pls = sim_arg
 	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, NPB=NPB)
 	eps_U_list = []
@@ -34,7 +34,7 @@ def gendata(eps_Global, N, NPB, sigma=1.0) -> tuple:
 		benign_pls.append(pl)
 	return eps_Global, N, NPB, benign_pls
 
-def readdata(filename: str='benign_pls.csv') -> tuple[float, int, int, list[list[dec]]]:
+def readdata(filename: str='benign_pls.csv') -> tuple:
 	pls_file = open(filename)
 	lines = pls_file.readlines()
 	benign_pls = []
@@ -46,12 +46,12 @@ def readdata(filename: str='benign_pls.csv') -> tuple[float, int, int, list[list
 			pass
 	return float(len(benign_pls)), len(benign_pls), len(benign_pls[0]), benign_pls
 
-def PrintPipeline(pl: list[dec]):
+def PrintPipeline(pl: list):
 	for item in pl:
 		print(float(item), end='\t')
 	print()
 
-def PrintPipelines(pls: list[list[dec]], N: int=0):
+def PrintPipelines(pls: list, N: int=0):
 	if N == 0:
 		N = len(pls)
 	for i in range(N):
@@ -76,7 +76,7 @@ def getDominantShareIDList(pls):
 		ds_id_list.append(ds_id)
 	return ds_id_list
 
-def MaximizeAllocationAtTS(dpfsys: dpf.DPF, ) -> list[dec]:
+def MaximizeAllocationAtTS(dpfsys: dpf.DPF, ) -> list:
 	unallocated_eps_list = copy.deepcopy(dpfsys.eps_U)
 	for j in range(dpfsys.NPB):
 		unallocated_eps_list[j] += dpfsys.eps_G[j] / dpfsys.N

@@ -25,11 +25,11 @@ class DPF:
 		self.eps_A.append(dec(dec_format % 0))
 		self.eps_C.append(dec(dec_format % 0))
 
-	def AddToWaiting(self, pl: list[dec]):
+	def AddToWaiting(self, pl: list):
 		self.wp[self.timestamp] = pl
 		self.timestamp += 1
 
-	def OnPipelineArrival(self, pl: list[dec]) -> None:
+	def OnPipelineArrival(self, pl: list) -> None:
 		for j in range(self.NPB):
 			if pl[j] > 0:
 				self.eps_U[j] = min(self.eps_G[j] - self.eps_C[j], self.eps_U[j] + self.eps_G[j] / self.N)
@@ -37,7 +37,7 @@ class DPF:
 	def SortWaitingPipelines(self):
 		return sorted(self.wp, key=lambda x: self.DominantShareList(self.wp.get(x)))
 
-	def OnSchedulerTimer(self) -> list[int]:
+	def OnSchedulerTimer(self) -> list:
 		sorted_pipelines = self.SortWaitingPipelines()
 		i = 0
 		finished = []
@@ -73,14 +73,14 @@ class DPF:
 					max_share = share
 		return max_share
 
-	def DominantShareList(self, d_i) -> list[dec]:
+	def DominantShareList(self, d_i) -> list:
 		ds = []
 		for j in range(self.NPB):
 			ds.append(d_i[j] / self.eps_G[j])
 		ds.sort(reverse=True)
 		return ds
 
-	def CanRun(self, d_i: list[dec], unallocated_eps_list: list[dec]=[]) -> bool:
+	def CanRun(self, d_i: list, unallocated_eps_list: list=[]) -> bool:
 		if len(unallocated_eps_list) == 0:
 			unallocated_eps_list = self.eps_U
 		assert(len(d_i) == len(unallocated_eps_list))
@@ -90,20 +90,20 @@ class DPF:
 				return False
 		return True
 
-	def Allocate(self, d_i: list[dec]) -> None:
+	def Allocate(self, d_i: list) -> None:
 		for j in range(self.NPB):
 			self.eps_U[j] -= d_i[j]
 			self.eps_A[j] += d_i[j]
 
 	## Remove completed pipeline from completed list
-	def deComplete(self, d_i: list[dec], seq) -> None:
+	def deComplete(self, d_i: list, seq) -> None:
 		for j in range(self.NPB):
 			self.eps_U[j] += d_i[j]
 			self.eps_C[j] -= d_i[j]
 		self.complete_pl_list.remove(seq)
 		self.wp[seq] = d_i
 
-def Simulation(sim_arg: tuple, verbose: bool=False) -> list[int]:
+def Simulation(sim_arg: tuple, verbose: bool=False) -> list:
 	eps_Global, N, NPB, pls = sim_arg
 	dpf = DPF(eps_Global=eps_Global, N=N, NPB=NPB)
 
