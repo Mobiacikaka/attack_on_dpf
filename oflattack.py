@@ -443,7 +443,7 @@ def main_gen(N, M, K, step=1.0, sigma=1.0, verbose=False) -> list:
 			print(str(funcname))
 			print(poisoned_list)
 			print('%.4f' % perc)
-			PrintPipelines(pls)
+			PrintPipelines(pls, N)
 		return float(perc)
 
 	return [
