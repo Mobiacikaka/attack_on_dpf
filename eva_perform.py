@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # vim:ts=2:sw=2:noet
 
-from multiprocessing import Pool
+import multiprocessing
 import numpy as np
 import os
 
@@ -12,9 +12,9 @@ def onerun(sigma, N, M, K, step, time):
 	param = f'{sigma}\n{N}\n{M}\n{K}\n{step}\n'
 	os.system(f'echo "{param}" | ./oflattack.py > "EVALUATION/{foldername}/{time}.csv"')
 
-def tenrun(sigma, N, M, K, step, time):
-	for i in range(10):
-		onerun(sigma, N, M, K, step, time * 10 + i)
+def multirun(sigma, N, M, K, step, time):
+	for i in range(multitimes):
+		onerun(sigma, N, M, K, step, time * multitimes + i)
 
 def run():
 	sigma_list = [1.0] # Exponential distribution lambda
@@ -35,20 +35,14 @@ def run():
 		for M in M_list
 		for Kperc in Kperc_list
 		for step in step_list
-		for time in range(times // 10)
+		for time in range(times // multitimes)
 	]
 
-	args = [
-		(1.0, 150, 20, 30, 1.0, 60),
-		(1.0, 200, 5, 40, 1.0, 38),
-		(1.0, 200, 15, 20, 1.0, 47),
-		(1.0, 200, 15, 60, 1.0, 73),
-	]
-
-	pool = Pool(16)
+	pool = multiprocessing.Pool(multiprocessing.cpu_count())
 	pool.starmap(onerun, args)
 	pool.close()
 	pool.join()
 
 if __name__ == '__main__':
+	multitimes = 10
 	run()
