@@ -263,7 +263,7 @@ def BlockGreedy(sim_arg: tuple, K: int):
 
 	return pls, poisoned_list
 
-def DynamicSequentialAttack_std(sim_arg: tuple, K: int, transzendental: tuple[list, list]=([], [])):
+def DynamicSequentialAttack_std(sim_arg: tuple, K: int, transzendental: tuple=([], [])):
 	eps_Global, N, NPB, pls = sim_arg
 	pre_pls, pre_complete = transzendental
 	assert(len(pls) + K >= N)

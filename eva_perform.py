@@ -39,7 +39,7 @@ def run():
 	]
 
 	pool = multiprocessing.Pool(multiprocessing.cpu_count())
-	pool.starmap(onerun, args)
+	pool.starmap(multirun, args)
 	pool.close()
 	pool.join()
 
