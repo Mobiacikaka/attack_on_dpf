@@ -475,7 +475,30 @@ def main_multirun(times=100):
 	for i in range(len(perclist)):
 		print("%.4f"%statistics.mean(perclist[i]))
 
+def main_randomattack():
+	eps_Global = float(input())
+	N = int(input())
+	M = int(input())
+	K = int(input())
+	benign_pls = []
+	for _ in range(N):
+		line = input()
+		line = line.split("\t")[:-1]
+		benign_pls.append([dec(a) for a in line])
+	sim_arg = (eps_Global, N, M, benign_pls)
+	pls, poisoned_list = RandomAttack(sim_arg, K)
+	sim_arg1 = (eps_Global, N, M, pls)
+	complete = dpf.Simulation(sim_arg1)
+	for i in poisoned_list:
+		assert(i in complete)
+	perc = SumPipelines(pls, poisoned_list) / (N * M)
+	print(RandomAttack)
+	print(poisoned_list)
+	print('%4f' % perc)
+	PrintPipelines(pls, N)
+
 if __name__ == '__main__':
 	# main_gen(bpn=100, Kperc=0.05, verbose=True)
 	# main_multirun(times=1)
-	main_onerun()
+	# main_onerun()
+	main_randomattack()
