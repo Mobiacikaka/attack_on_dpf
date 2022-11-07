@@ -2,36 +2,70 @@
 # vim:ts=2:sw=2:noet
 
 import os
+import multiprocessing
 
-dirs = os.listdir('./EVALUATION/DATA.SINGLE.PARAM')
+def onerun(sigma, N, M, K, step, time):
+	print("sigma", sigma, "N", N, "M", M, "K", K, "step", step, "time", time)
+	foldername = f'sigma_{sigma}_N_{N}_M_{M}_K_{K}_step_{step}'
+	csvfile = open(f'./EVALUATION/DATA.SINGLE.PARAM/{foldername}/{time}.csv')
+	rainput = f'{N * step}\n{N}\n{M}\n{K}\n'
+	for _ in range(N):
+		rainput += csvfile.readline()
+	csvfile.close()
+	os.system(f'echo "{rainput}" | ./oflattack.py > ./EVALUATION/DATA.SINGLE.PARAM/{foldername}/{time}.randomattack.csv')
 
-if 'images' in dirs:
-	dirs.remove('images')
+def multirun(sigma, N, M, K, step, time):
+	for i in range(multitimes):
+		onerun(sigma, N, M, K, step, time * multitimes + i)
 
-sigma = 1.0
-N = 0
-M = 0
-K = 0
-step = 1.0
+def run_single_param():
+	sigma_list = [1.0] # Exponential distribution lambda
+	N_list = [50, 100, 150, 200, 250]
+	M_list = [5, 10, 15, 20, 25, 30]
+	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
+	step_list = [1.0]
+	times = 100
 
-for dirname in dirs:
-	dirsplit = dirname.split('_')
-	for i in range(len(dirsplit)):
-		if dirsplit[i] == 'sigma':
-			sigma = float(dirsplit[i+1])
-		elif dirsplit[i] == 'N':
-			N = int(dirsplit[i+1])
-		elif dirsplit[i] == 'M':
-			M = int(dirsplit[i+1])
-		elif dirsplit[i] == 'K':
-			K = int(dirsplit[i+1])
-		elif dirsplit[i] == 'step':
-			step = float(dirsplit[i+1])
-	for i in range(100):
-		csvfile = open(f'./EVALUATION/DATA.SINGLE.PARAM/{dirname}/{i}.csv')
-		# random attack input
-		rainput = f'{N * step}\n{N}\n{M}\n{K}\n'
-		for j in range(N):
-			rainput += csvfile.readline()
-		print('N', N, 'M', M, 'K', K, 'step', step, 'time', i)
-		os.system(f'echo "{rainput}" | ./oflattack.py > ./EVALUATION/DATA.SINGLE.PARAM/{dirname}/{i}.RandomAttack.csv')
+	args = [
+		(sigma, N, M, int(Kperc * N), step, time)
+		for sigma in sigma_list
+		for N in N_list
+		for M in M_list
+		for Kperc in Kperc_list
+		for step in step_list
+		for time in range(times // multitimes)
+	]
+
+	pool = multiprocessing.Pool(multiprocessing.cpu_count())
+	pool.starmap(multirun, args)
+	pool.close()
+	pool.join()
+
+if __name__ == '__main__':
+	multitimes = 10
+	run_single_param()
+
+# for dirname in dirs:
+# 	dirsplit = dirname.split('_')
+# 	for i in range(len(dirsplit)):
+# 		if dirsplit[i] == 'sigma':
+# 			sigma = float(dirsplit[i+1])
+# 		elif dirsplit[i] == 'N':
+# 			N = int(dirsplit[i+1])
+# 		elif dirsplit[i] == 'M':
+# 			M = int(dirsplit[i+1])
+# 		elif dirsplit[i] == 'K':
+# 			K = int(dirsplit[i+1])
+# 		elif dirsplit[i] == 'step':
+# 			step = float(dirsplit[i+1])
+# 	for i in range(times // rounds):
+# 		def oneround():
+# 			for j in range(rounds):
+# 				time = i * rounds + j
+# 				csvfile = open(f'./EVALUATION/DATA.SINGLE.PARAM/{dirname}/{time}.csv')
+# 				rainput = f'{N * step}\n{N}\n{M}\n{K}\n'
+# 				for _ in range(N):
+# 					rainput += csvfile.readline()
+# 				print('N', N, 'M', M, 'K', K, 'step', step, 'time', time)
+# 				os.system(f'echo "{rainput}" | ./oflattack.py > ./EVALUATION/DATA.SINGLE.PARAM/{dirname}/{time}.RandomAttack.csv')
+# 		pool.
