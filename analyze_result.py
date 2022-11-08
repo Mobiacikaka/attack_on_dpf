@@ -19,12 +19,14 @@ def read_onetime(folderargs, times, datafolder) -> list:
 			res.append(float(lines[i+2]))
 	return res
 
-def read_folder(folderargs, datafolder):
-	res_hundredtimes = [[], [], [], []]
+def read_folder(folderargs, datafolder, funcnum=5):
+	res_hundredtimes = []
+	for _ in range(funcnum):
+		res_hundredtimes.append([])
 	print(folderargs)
 	for times in range(100):
 		res_onetime = read_onetime(folderargs, times, datafolder)
-		for i in range(4):
+		for i in range(funcnum):
 			try:
 				res_hundredtimes[i].append(res_onetime[i])
 			except:
@@ -74,15 +76,15 @@ def draw_K_effect():
 	for N in N_list:
 		for M in M_list:
 			## Draw Picture
-			y = [[], [], [], []]
-			err = [[], [], [], []]
+			y = [[], [], [], [], []]
+			err = [[], [], [], [], []]
 			for Kperc in Kperc_list:
 				folderargs = (1.0, N, M, int(Kperc * N), step)
 				res_hundredtimes = read_folder(folderargs, datafolder)
-				for i in range(len(res_hundredtimes)):
+				for i in range(len(funcname)):
 					y[i].append(statistics.mean(res_hundredtimes[i]))
 					err[i].append(statistics.stdev(res_hundredtimes[i]))
-			for i in range(len(y)):
+			for i in range(len(funcname)):
 				plt.errorbar(Kperc_list, y[i], err[i], label=funcname[i], marker=markers[i], capsize=4)
 				# plt.plot(Kperc_list, y[i], label=funcname[i], marker=markers[i])
 			plt.xlabel('K/N')
@@ -106,15 +108,15 @@ def draw_M_effect():
 	for N in N_list:
 		for Kperc in Kperc_list:
 			## Draw Picture
-			y = [[], [], [], []]
-			err = [[], [], [], []]
+			y = [[], [], [], [], []]
+			err = [[], [], [], [], []]
 			for M in M_list:
 				folderargs = (1.0, N, M, int(Kperc * N), step)
 				res_hundredtimes = read_folder(folderargs, datafolder)
-				for i in range(len(res_hundredtimes)):
+				for i in range(len(funcname)):
 					y[i].append(statistics.mean(res_hundredtimes[i]))
 					err[i].append(statistics.stdev(res_hundredtimes[i]))
-			for i in range(len(y)):
+			for i in range(len(funcname)):
 				plt.errorbar(M_list, y[i], err[i], label=funcname[i], marker=markers[i], capsize=4)
 				# plt.plot(M_list, y[i], label=funcname[i], marker=markers[i])
 			plt.xlabel('M')
@@ -138,15 +140,15 @@ def draw_N_effect():
 	for M in M_list:
 		for Kperc in Kperc_list:
 			## Draw Picture
-			y = [[], [], [], []]
-			err = [[], [], [], []]
+			y = [[], [], [], [], []]
+			err = [[], [], [], [], []]
 			for N in N_list:
 				folderargs = (1.0, N, M, int(Kperc * N), step)
 				res_hundredtimes = read_folder(folderargs, datafolder)
-				for i in range(len(res_hundredtimes)):
+				for i in range(len(funcname)):
 					y[i].append(statistics.mean(res_hundredtimes[i]))
 					err[i].append(statistics.stdev(res_hundredtimes[i]))
-			for i in range(len(y)):
+			for i in range(len(funcname)):
 				plt.errorbar(N_list, y[i], err[i], label=funcname[i], marker=markers[i], capsize=4)
 				# plt.plot(N_list, y[i], label=funcname[i], marker=markers[i])
 			plt.xlabel('N')
@@ -161,32 +163,35 @@ def draw_N_effect():
 			plt.clf()
 
 def draw_GRAIN_effect():
-	N_list = [50, 100, 200, 400]
+	N_list = [40, 60, 120, 160, 240]
 	M_list = [10]
-	Kperc_list = [0.2, 0.3, 0.4]
+	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
 	datafolder = 'DATA.FIXED.EPS_G'
 	funcname = ['GTR', 'Block Greedy', 'DSA1', 'DSA2']
-	eps_G = 200.0
+	eps_G = 120.0
+	funcnum = 4
 
-	for M in M_list:
-		for Kperc in Kperc_list:
-			## Draw Picture
-			y = [[], [], [], []]
-			for N in N_list:
-				folderargs = (1.0, N, M, int(Kperc * N), eps_G/N)
-				res_hundredtimes = read_folder(folderargs, datafolder)
-				for i in range(len(res_hundredtimes)):
-					y[i].append(statistics.mean(res_hundredtimes[i]))
-			print(y)
-			for i in range(len(y)):
-				plt.plot(N_list, y[i], label=funcname[i], marker='o')
-			plt.xlabel('N')
-			plt.ylabel('Gain Fraction')
-			plt.xticks(N_list)
-			plt.legend()
-			os.system(f'mkdir -p EVALUATION/{datafolder}/images/')
-			plt.savefig(f'EVALUATION/{datafolder}/images/N_EFFECT/M_{M}_Kperc_{Kperc}_sigma_{1.0}_eps_G_{eps_G}.eps', format='eps')
-			plt.clf()
+	for sigma in [0.5, 1.0, 2.0]:
+		for M in M_list:
+			for Kperc in Kperc_list:
+				## Draw Picture
+				y = [[], [], [], [], []]
+				for N in N_list:
+					folderargs = (sigma, N, M, int(Kperc * N), eps_G/N)
+					res_hundredtimes = read_folder(folderargs, datafolder, funcnum)
+					for i in range(funcnum):
+						y[i].append(statistics.mean(res_hundredtimes[i]) / (eps_G/N))
+				for i in range(funcnum):
+					plt.plot(N_list, y[i], label=funcname[i], marker='o')
+				plt.xlabel('N')
+				plt.ylabel('Gain Fraction')
+				plt.xticks(N_list)
+				plt.legend()
+				os.system(f'mkdir -p EVALUATION/{datafolder}/images/')
+				filename = f'EVALUATION/{datafolder}/images/Grain_Effect_sigma{sigma}_epsG{eps_G}_M{M}_Kperc{Kperc}.eps'
+				plt.tight_layout()
+				plt.savefig(filename, format='eps')
+				plt.clf()
 
 def main():
 	config = {
@@ -206,12 +211,12 @@ if __name__ == '__main__':
 	plt.rc('legend', fontsize=10)    # legend fontsize
 	plt.rc('figure', titlesize=18)   # fontsize of the figure title
 
-	funcname = ['GTR', 'Block Greedy', 'DSA1', 'DSA2']
+	funcname = ['GTR', 'Block Greedy', 'DSA1', 'DSA2', 'RandomAttack']
 	markers = ['o', 'v', 'P', 's', 'p']
 	yticks = np.arange(0.2, 1.1, 0.1)
 
 	# draw_K_effect()
 	# draw_M_effect()
 	# draw_N_effect()
-	# draw_GRAIN_effect()
+	draw_GRAIN_effect()
 	# main()
