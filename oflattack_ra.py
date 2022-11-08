@@ -44,28 +44,3 @@ def run_single_param():
 if __name__ == '__main__':
 	multitimes = 10
 	run_single_param()
-
-# for dirname in dirs:
-# 	dirsplit = dirname.split('_')
-# 	for i in range(len(dirsplit)):
-# 		if dirsplit[i] == 'sigma':
-# 			sigma = float(dirsplit[i+1])
-# 		elif dirsplit[i] == 'N':
-# 			N = int(dirsplit[i+1])
-# 		elif dirsplit[i] == 'M':
-# 			M = int(dirsplit[i+1])
-# 		elif dirsplit[i] == 'K':
-# 			K = int(dirsplit[i+1])
-# 		elif dirsplit[i] == 'step':
-# 			step = float(dirsplit[i+1])
-# 	for i in range(times // rounds):
-# 		def oneround():
-# 			for j in range(rounds):
-# 				time = i * rounds + j
-# 				csvfile = open(f'./EVALUATION/DATA.SINGLE.PARAM/{dirname}/{time}.csv')
-# 				rainput = f'{N * step}\n{N}\n{M}\n{K}\n'
-# 				for _ in range(N):
-# 					rainput += csvfile.readline()
-# 				print('N', N, 'M', M, 'K', K, 'step', step, 'time', time)
-# 				os.system(f'echo "{rainput}" | ./oflattack.py > ./EVALUATION/DATA.SINGLE.PARAM/{dirname}/{time}.RandomAttack.csv')
-# 		pool.
