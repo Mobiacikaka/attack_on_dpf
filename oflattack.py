@@ -438,7 +438,7 @@ def main_gen(N, M, K, step=1.0, sigma=1.0, verbose=False) -> list:
 		complete = dpf.Simulation(sim_arg1)
 		for i in poisoned_list:
 			assert(i in complete)
-		perc = SumPipelines(pls, poisoned_list) / (N * NPB)
+		perc = SumPipelines(pls, poisoned_list) / (N * NPB * step)
 		if verbose:
 			print(str(funcname))
 			print(poisoned_list)
@@ -451,6 +451,7 @@ def main_gen(N, M, K, step=1.0, sigma=1.0, verbose=False) -> list:
 		CallFunc(BlockGreedy),
 		CallFunc(DynamicSequentialAttack_std),
 		CallFunc(DynamicSequentialAttack_mod),
+		CallFunc(RandomAttack),
 	]
 
 def main_onerun():
