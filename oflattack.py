@@ -5,11 +5,15 @@ import random
 import dpf
 import copy
 import statistics
+import pdb
 
 from dpf import dec_format
 alpha = dec(dec_format % (1 / 100))
 
 ## Utility Functions
+def ReturnFunctionName(funcname):
+	return str(funcname).split(' ')[1]
+
 def return_eps_U_list(sim_arg: tuple) -> list:
 	eps_Global, N, M, benign_pls = sim_arg
 	dpfsys = dpf.DPF(eps_Global=eps_Global, N=N, M=M)
@@ -174,7 +178,7 @@ def NaiveGreedy(sim_arg: tuple, K: int):
 		k2 -= 1
 	return pls, poisoned_list
 
-def GreedyFramework(sim_arg: tuple, K: int, method='__Tree_MaxEveryDepth'):
+def GreedyFramework(sim_arg: tuple, K: int, method='__Tree_MaxEveryDepth', **kwargs):
 	eps_Global, N, M, pls = sim_arg
 	assert(len(pls) + K >= N)
 
@@ -197,7 +201,7 @@ def GreedyFramework(sim_arg: tuple, K: int, method='__Tree_MaxEveryDepth'):
 			__dpfsys.OnSchedulerTimer()
 		return __pls, tmp_sum
 
-	def __Tree_SearchAllRoute(__pls: list, __poisoned_list: list) -> tuple:
+	def __Tree_DFS(__pls: list, __poisoned_list: list) -> tuple:
 		__pls = copy.deepcopy(__pls)
 		__poisoned_list = copy.deepcopy(__poisoned_list)
 
@@ -206,7 +210,7 @@ def GreedyFramework(sim_arg: tuple, K: int, method='__Tree_MaxEveryDepth'):
 
 		__dpfsys__ = dpf.DPF(eps_Global, N, M)
 
-		def __TreeDFS(__pls: list, __dpfsys: dpf.DPF, ts: int) -> tuple:
+		def __DFS(__pls: list, __dpfsys: dpf.DPF, ts: int) -> tuple:
 			while ts not in __poisoned_list:
 				## Do normal allocation
 				__dpfsys.AddToWaiting(__pls[ts])
@@ -249,7 +253,7 @@ def GreedyFramework(sim_arg: tuple, K: int, method='__Tree_MaxEveryDepth'):
 					__dpfsys_copy.OnPipelineArrival(tmp_poisoned_pl)
 					complete = __dpfsys_copy.OnSchedulerTimer()
 					assert(ts in complete)
-					__pls_tmp, branch_max_sum = __TreeDFS(__pls_copy, __dpfsys_copy, ts+1)
+					__pls_tmp, branch_max_sum = __DFS(__pls_copy, __dpfsys_copy, ts+1)
 					branch_max_sum += sum(tmp_poisoned_pl)
 					if branch_max_sum > max_branch:
 						max_branch = branch_max_sum
@@ -278,7 +282,7 @@ def GreedyFramework(sim_arg: tuple, K: int, method='__Tree_MaxEveryDepth'):
 					print(__dpfsys_copy.eps_U)
 					print(__dpfsys_copy.wp)
 				assert(ts in complete)
-				__pls_tmp, branch_max_sum = __TreeDFS(__pls_copy, __dpfsys_copy, ts+1)
+				__pls_tmp, branch_max_sum = __DFS(__pls_copy, __dpfsys_copy, ts+1)
 				branch_max_sum += sum(tmp_poisoned_pl)
 				if branch_max_sum > max_branch:
 					max_branch = branch_max_sum
@@ -286,15 +290,117 @@ def GreedyFramework(sim_arg: tuple, K: int, method='__Tree_MaxEveryDepth'):
 
 			return max_pls, max_branch
 
-		return __TreeDFS(__pls, __dpfsys__, 0)
+		return __DFS(__pls, __dpfsys__, 0)
 
-	def __Tree_MaxBDepth(__pls: list, __poisoned_list: list, __b: int=2) -> tuple:
-		return 0, 0
+	def __Tree_DFS_depth_limited(__pls: list, __poisoned_list: list, __d: int=1) -> tuple:
+		__pls = copy.deepcopy(__pls)
+		__poisoned_list = copy.deepcopy(__poisoned_list)
+
+		for i in range(len(__poisoned_list)):
+			__poisoned_list[i] += i
+
+		def __DFS_depth_limited(__pls: list, __dpfsys: dpf.DPF, ts: int, depth: int) -> tuple:
+			if depth == 0 or len(__poisoned_list) == 0 or ts > max(__poisoned_list):
+				return __pls, dec(0)
+			while ts not in __poisoned_list:
+				if ts >= N:
+					return __pls, dec(0)
+				## Do normal allocation
+				assert(ts == __dpfsys.timestamp)
+				__dpfsys.AddToWaiting(__pls[ts])
+				__dpfsys.OnPipelineArrival(__pls[ts])
+				__dpfsys.OnSchedulerTimer()
+				ts += 1
+			## Divide into different Branch
+			eps_U = copy.deepcopy(__dpfsys.eps_U)
+			for j in range(M):
+				eps_U[j] += __dpfsys.eps_G[j] / __dpfsys.N
+
+			wp = __dpfsys.wp
+			sorted_pipelines = sorted(list(wp.keys()), key=lambda x: __dpfsys.DominantShareList(wp.get(x)))
+
+			max_pls = []
+			max_branch = dec(0)
+
+			for plno in sorted_pipelines:
+				pl = __pls[plno]
+				if __dpfsys.CanRun(pl, eps_U):
+					for j in range(M):
+						assert(eps_U[j] >= pl[j])
+					## Generate Poisoned Pipeline
+					ds = max(pl)
+					tmp_poisoned_pl = []
+					for j in range(M):
+						if ds <= eps_U[j]:
+							tmp_poisoned_pl.append(ds - alpha)
+						else:
+							tmp_poisoned_pl.append(eps_U[j])
+					__pls_copy = copy.deepcopy(__pls)
+					__dpfsys_copy = copy.deepcopy(__dpfsys)
+
+					## Create Branch
+					__pls_copy.insert(ts, tmp_poisoned_pl)
+					assert(__dpfsys_copy.timestamp == ts)
+					__dpfsys_copy.AddToWaiting(tmp_poisoned_pl)
+					__dpfsys_copy.OnPipelineArrival(tmp_poisoned_pl)
+					complete = __dpfsys_copy.OnSchedulerTimer()
+					if ts not in complete:
+						print(ts, __dpfsys_copy.timestamp, complete)
+						print(__dpfsys.eps_U)
+						print(eps_U)
+						print(__dpfsys_copy.eps_U)
+						print(__dpfsys_copy.wp)
+					assert(ts in complete)
+					__pls_tmp, branch_max_sum = __DFS_depth_limited(__pls_copy, __dpfsys_copy, ts+1, depth-1)
+					branch_max_sum += sum(tmp_poisoned_pl)
+					if branch_max_sum > max_branch:
+						max_branch = branch_max_sum
+						max_pls = __pls_tmp
+
+					## Do Fake Allocation
+					for j in range(M):
+						assert(eps_U[j] >= pl[j])
+						eps_U[j] -= pl[j]
+						if eps_U[j] == 0:
+							return max_pls, max_branch
+
+			if True:
+				__pls_copy = copy.deepcopy(__pls)
+				__dpfsys_copy = copy.deepcopy(__dpfsys)
+				## Create Branch
+				tmp_poisoned_pl = copy.deepcopy(eps_U)
+				__pls_copy.insert(ts, tmp_poisoned_pl)
+				__dpfsys_copy.AddToWaiting(tmp_poisoned_pl)
+				__dpfsys_copy.OnPipelineArrival(tmp_poisoned_pl)
+				complete = __dpfsys_copy.OnSchedulerTimer()
+				if ts not in complete:
+					print(ts, complete)
+					print(__dpfsys.eps_U)
+					print(eps_U)
+					print(__dpfsys_copy.eps_U)
+					print(__dpfsys_copy.wp)
+				assert(ts in complete)
+				__pls_tmp, branch_max_sum = __DFS_depth_limited(__pls_copy, __dpfsys_copy, ts+1, depth-1)
+				branch_max_sum += sum(tmp_poisoned_pl)
+				if branch_max_sum > max_branch:
+					max_branch = branch_max_sum
+					max_pls = __pls_tmp
+
+			return max_pls, max_branch
+
+		__sum = dec(0)
+		while len(__poisoned_list) > 0:
+			__dpfsys = dpf.DPF(eps_Global, N, M)
+			__pls, __sum_depth = __DFS_depth_limited(__pls, __dpfsys, 0, __d)
+			__poisoned_list = __poisoned_list[__d:]
+			__sum += __sum_depth
+
+		return __pls, __sum
 
 	method_dict = {
 		'__Tree_MaxEveryDepth': __Tree_MaxEveryDepth,
-		'__Tree_SearchAllRoute': __Tree_SearchAllRoute,
-		'__Tree_MaxBDepth': __Tree_MaxBDepth,
+		'__Tree_DFS': __Tree_DFS,
+		'__Tree_DFS_depth_limited': __Tree_DFS_depth_limited,
 	}
 
 	A = method_dict.get(method, __Tree_MaxEveryDepth)
@@ -311,18 +417,18 @@ def GreedyFramework(sim_arg: tuple, K: int, method='__Tree_MaxEveryDepth'):
 			tmp_poisoned_list.append(ts)
 			tmp_poisoned_list.sort()
 			## Calculate the sum of poisoned pipelines give tmp_poisoned_list
-			_, tmp_sum = A(pls, tmp_poisoned_list)
+			_, tmp_sum = A(pls, tmp_poisoned_list, **kwargs)
 			if tmp_sum > max_sum:
 				max_sum = tmp_sum
 				max_poisoned_list = tmp_poisoned_list
 
 		poisoned_list = max_poisoned_list
-		print(poisoned_list)
+		# print(poisoned_list)
 		k2 -= 1
 
 	assert(len(poisoned_list) == K)
 
-	pls, _ = A(pls, poisoned_list)
+	pls, _ = A(pls, poisoned_list, **kwargs)
 	for i in range(K):
 		poisoned_list[i] += i
 
@@ -620,13 +726,15 @@ def main_gen(N, M, K, step=1.0, sigma=1.0, verbose=False) -> list:
 		complete = dpf.Simulation(sim_arg1)
 		complete_poisoned = []
 		for i in poisoned_list:
+			assert(i in complete)
 			if i in complete:
 				complete_poisoned.append(i)
 		perc = float(SumPipelines(pls, complete_poisoned)) / (N * M * step)
 		if not verbose:
-			print('%.4f' % perc)
+			print(ReturnFunctionName(funcname), kwargs)
+			print('%.4f' % perc, poisoned_list)
 		if verbose:
-			print(str(funcname))
+			print(ReturnFunctionName(funcname))
 			print(poisoned_list)
 			PrintPipelines(pls, N)
 		return float(perc)
@@ -638,7 +746,9 @@ def main_gen(N, M, K, step=1.0, sigma=1.0, verbose=False) -> list:
 		# CallFunc(RandomAttack),
 		# CallFunc(NaiveGreedy),
 		CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
-		CallFunc(GreedyFramework, method='__Tree_SearchAllRoute'),
+		CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
+		CallFunc(GreedyFramework, method='__Tree_DFS'),
+		CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=K),
 	]
 
 def main_onerun():
