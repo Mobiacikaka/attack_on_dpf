@@ -26,8 +26,8 @@ class DPF:
 		self.eps_C.append(dec(dec_format % 0))
 
 	def AddToWaiting(self, pl: list):
+		assert(self.wp.get(self.timestamp) == None)
 		self.wp[self.timestamp] = pl
-		self.timestamp += 1
 
 	def OnPipelineArrival(self, pl: list) -> None:
 		for j in range(self.M):
@@ -62,6 +62,7 @@ class DPF:
 						self.eps_U[j] += d_i[j]
 						self.eps_A[j] -= d_i[j]
 			i += 1
+		self.timestamp += 1
 		return finished
 
 	def DominantShare(self, d_i) -> dec:
