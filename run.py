@@ -9,13 +9,15 @@ parent_dir = 'DATA.SINGLE.PARAM/'
 def cut(output, foldername, time, N):
 	data_original = output[:N]
 	file_original = open(f'EVALUATION/{foldername}/{time}.original.txt', 'w')
-	file_original.writelines(data_original)
+	for line in data_original:
+		file_original.write(line+'\n')
 	file_original.close()
 	output = output[N:]
 	while len(output) != 0:
 		data_func = output[:N+3]
 		file_func = open(f'EVALUATION/{foldername}/{time}.{data_func[0]}.txt', 'w')
-		file_func.writelines(data_func)
+		for line in data_func:
+			file_func.write(line+'\n')
 		output = output[N+3:]
 		file_func.close()
 
