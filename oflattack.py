@@ -1,11 +1,10 @@
 #!/usr/bin/python3
 # vim:ts=2:sw=2:noet
 from decimal import Decimal as dec
-import random
+import random, numpy
 import dpf
 import copy
-import statistics
-import pdb
+import statistics, time
 
 from dpf import dec_format
 alpha = dec(dec_format % (1 / 100))
@@ -28,7 +27,7 @@ def return_eps_U_list(sim_arg: tuple) -> list:
 
 	return eps_U_list
 
-def gendata(eps_Global, N, M, sigma=1.0) -> tuple:
+def gendata(N, M, sigma=1.0) -> list:
 	benign_pls	= []
 	for _ in range(N):
 		pl = []
@@ -36,7 +35,18 @@ def gendata(eps_Global, N, M, sigma=1.0) -> tuple:
 			rnd = random.expovariate(sigma)
 			pl.append(dec(dec_format % rnd))
 		benign_pls.append(pl)
-	return eps_Global, N, M, benign_pls
+	return benign_pls
+
+def GenDataset(ratio, N, M, sigma1=1.0, sigma2=2.0) -> list:
+	benign_pls = []
+	for _ in range(N):
+		sigma = numpy.random.choice([sigma1, sigma2], 1, p=[ratio, 1-ratio])[0]
+		pl = []
+		for _ in range(M):
+			rnd = random.expovariate(sigma)
+			pl.append(dec(dec_format % rnd))
+		benign_pls.append(pl)
+	return benign_pls
 
 def readdata(filename: str='benign_pls.csv') -> tuple:
 	pls_file = open(filename)
@@ -715,15 +725,18 @@ def DynamicSequentialAttack_mod(sim_arg: tuple, K: int):
 	return pls, poisoned_list
 
 ## Run Functions
-def main_gen(N, M, K, step=1.0, sigma=1.0, verbose=False) -> list:
-	eps_Global, N, M, benign_pls = gendata(N* step, N, M, sigma=sigma)
+def main_gen(N, M, K, step=1.0, sigma1=0.5, sigma2=2.0, verbose=False) -> list:
+	eps_Global = N * step
+	benign_pls = GenDataset(0.8, N, M, sigma1=sigma1, sigma2=sigma2)
 	# eps_Global, N, M, benign_pls = readdata('data.csv')
 	sim_arg = (eps_Global, N, M, benign_pls)
 	if verbose:
 		PrintPipelines(benign_pls, N)
 
 	def CallFunc(funcname, **kwargs) -> float:
+		start_time = time.time()
 		pls, poisoned_list = funcname(copy.deepcopy(sim_arg), K, **kwargs)
+		duration = time.time() - start_time
 		sim_arg1 = (eps_Global, N, M, pls)
 		complete = dpf.Simulation(sim_arg1)
 		complete_poisoned = []
@@ -734,7 +747,7 @@ def main_gen(N, M, K, step=1.0, sigma=1.0, verbose=False) -> list:
 		perc = float(SumPipelines(pls, complete_poisoned)) / (N * M * step)
 		if not verbose:
 			print(ReturnFunctionName(funcname), kwargs)
-			print('%.4f' % perc, poisoned_list)
+			print('%.4f' % perc, '%.4f' % duration, poisoned_list)
 		if verbose:
 			print(ReturnFunctionName(funcname))
 			print(poisoned_list)
@@ -747,19 +760,19 @@ def main_gen(N, M, K, step=1.0, sigma=1.0, verbose=False) -> list:
 		# CallFunc(DynamicSequentialAttack_mod),
 		# CallFunc(RandomAttack),
 		# CallFunc(NaiveGreedy),
-		CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
+		# CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
 		CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
-		CallFunc(GreedyFramework, method='__Tree_DFS'),
-		CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=K),
+		CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=2),
+		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=4),
+		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=K),
 	]
 
 def main_onerun():
-	sigma = float(input())
 	N = int(input())
 	M = int(input())
 	K = int(input())
 	step = float(input())
-	main_gen(N, M, K, step, sigma=sigma, verbose=False)
+	main_gen(N, M, K, step, verbose=False)
 
 def main_multirun(times=100):
 	perclist = []
