@@ -87,7 +87,7 @@ def MaximizeAllocationAtTS(dpfsys: dpf.DPF, ) -> list:
 
 	wp = dpfsys.wp
 	sorted_pipelines = sorted(list(wp.keys()), key=lambda x: dpfsys.DominantShareList(wp.get(x)))
-	canrunflag = False # check if exist waiting pipeline can run
+	zeroflag = False
 	poisoned_pl = []
 	for bplno in sorted_pipelines:
 		if sum(unallocated_eps_list) <= sum(poisoned_pl):
@@ -98,7 +98,6 @@ def MaximizeAllocationAtTS(dpfsys: dpf.DPF, ) -> list:
 		if not dpfsys.CanRun(bpl, unallocated_eps_list):
 			continue
 
-		canrunflag = True
 		ds = max(bpl)
 		tmp_poisoned_pl = []
 		for j in range(dpfsys.M):
@@ -112,9 +111,12 @@ def MaximizeAllocationAtTS(dpfsys: dpf.DPF, ) -> list:
 
 		for j in range(dpfsys.M):
 			unallocated_eps_list[j] -= bpl[j]
+			if unallocated_eps_list[j] == 0:
+				zeroflag = True
 
-	if not canrunflag:
-		poisoned_pl = unallocated_eps_list
+	if not zeroflag:
+		if sum(unallocated_eps_list) > sum(poisoned_pl):
+			poisoned_pl = unallocated_eps_list
 
 	return poisoned_pl
 
