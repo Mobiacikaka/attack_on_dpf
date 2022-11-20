@@ -19,10 +19,10 @@ def cut(output, foldername, time, N):
 		output = output[N+3:]
 		file_func.close()
 
-def onerun(sigma, N, M, K, step, time):
+def onerun(N, M, K, step, time):
 	print("N", N, "M", M, "K", K, "step", step, "time", time)
 	foldername = f'{parent_dir}N_{N}_M_{M}_K_{K}_step_{step}'
-	param = f'{sigma}\n{N}\n{M}\n{K}\n{step}\n'
+	param = f'{N}\n{M}\n{K}\n{step}\n'
 
 	subprocess.run(['mkdir', '-p', f'EVALUATION/{foldername}/'])
 	output = subprocess.run(
@@ -33,12 +33,11 @@ def onerun(sigma, N, M, K, step, time):
 	output = output.split('\n')[:-1]
 	cut(output, foldername, time, N)
 
-def multirun(sigma, N, M, K, step, time):
+def multirun(N, M, K, step, time):
 	for i in range(multitimes):
-		onerun(sigma, N, M, K, step, time * multitimes + i)
+		onerun(N, M, K, step, time * multitimes + i)
 
 def run_fixed_epsG():
-	sigma_list = [0.5, 1.0, 2.0] # Exponential distribution lambda
 	M_list = [10]
 	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
 	times = 100
@@ -50,8 +49,7 @@ def run_fixed_epsG():
 	parent_dir = 'DATA.FIXED_EPSG/'
 
 	args = [
-		(sigma, N, M, int(Kperc * N), eps_G / N, time)
-		for sigma in sigma_list
+		(N, M, int(Kperc * N), eps_G / N, time)
 		for N in N_list
 		for M in M_list
 		for Kperc in Kperc_list
@@ -64,7 +62,6 @@ def run_fixed_epsG():
 	pool.join()
 
 def run_single_param():
-	sigma_list = [1.0] # Exponential distribution lambda
 	N_list = [50, 100, 150, 200, 250]
 	M_list = [5, 10, 15, 20, 25, 30]
 	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
@@ -72,8 +69,7 @@ def run_single_param():
 	times = 100
 
 	args = [
-		(sigma, N, M, int(Kperc * N), step, time)
-		for sigma in sigma_list
+		(N, M, int(Kperc * N), step, time)
 		for N in N_list
 		for M in M_list
 		for Kperc in Kperc_list
@@ -87,4 +83,4 @@ def run_single_param():
 	pool.join()
 
 if __name__ == '__main__':
-	run_fixed_epsG()
+	run_single_param()
