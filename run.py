@@ -1,15 +1,36 @@
 #!/usr/bin/python3
 # vim:ts=2:sw=2:noet
 
-import multiprocessing
-import os
+import multiprocessing, subprocess
+
+multitimes = 10
+parent_dir = 'DATA.SINGLE.PARAM/'
+
+def cut(output, foldername, time, N):
+	data_original = output[:N]
+	file_original = open(f'EVALUATION/{foldername}/{time}.original.txt')
+	file_original.writelines(data_original)
+	file_original.close()
+	output = output[N:]
+	while len(output) != 0:
+		data_func = output[:N+3]
+		file_func = open(f'EVALUATION/{foldername}/{time}.{data_func[0]}.txt')
+		file_func.writelines(data_func)
+		output = output[N+3:]
 
 def onerun(sigma, N, M, K, step, time):
-	print("sigma", sigma, "N", N, "M", M, "K", K, "step", step, "time", time)
-	foldername = f'{parent_dir}sigma_{sigma}_N_{N}_M_{M}_K_{K}_step_{step}'
-	os.system(f'mkdir -p EVALUATION/{foldername}/')
+	print("N", N, "M", M, "K", K, "step", step, "time", time)
+	foldername = f'{parent_dir}N_{N}_M_{M}_K_{K}_step_{step}'
 	param = f'{sigma}\n{N}\n{M}\n{K}\n{step}\n'
-	os.system(f'echo "{param}" | ./oflattack.py > "EVALUATION/{foldername}/{time}.csv"')
+
+	subprocess.run(['mkdir', '-p', f'EVALUATION/{foldername}/'])
+	output = subprocess.run(
+		['echo', f'"{param}"', '|', 'python', 'oflattack.py'], 
+		stdout=subprocess.PIPE
+	)
+	output = output.stdout.decode('utf-8')
+	output = output.split('\n')[:-1]
+	cut(output, foldername, time, N)
 
 def multirun(sigma, N, M, K, step, time):
 	for i in range(multitimes):
@@ -65,6 +86,4 @@ def run_single_param():
 	pool.join()
 
 if __name__ == '__main__':
-	multitimes = 10
-	parent_dir = ''
 	run_fixed_epsG()
