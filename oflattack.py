@@ -725,10 +725,17 @@ def DynamicSequentialAttack_mod(sim_arg: tuple, K: int):
 	return pls, poisoned_list
 
 ## Run Functions
-def main_gen(N, M, K, step=1.0, sigma1=0.5, sigma2=2.0, verbose=False) -> list:
+def main_gen(config: dict, verbose=False) -> list:
+	N = config.get('N', 100)
+	M = config.get('M', 10)
+	K = config.get('K', 10)
+	step = config.get('step', 1.0)
+	sigma1 = config.get('sigma1', 0.1)
+	sigma2 = config.get('sigma2', 1.0)
+	ratio = config.get('ratio', 0.75) # mice ratio
+
 	eps_Global = N * step
-	benign_pls = GenDataset(0.8, N, M, sigma1=sigma1, sigma2=sigma2)
-	# eps_Global, N, M, benign_pls = readdata('data.csv')
+	benign_pls = GenDataset(ratio, N, M, sigma1=sigma1, sigma2=sigma2)
 	sim_arg = (eps_Global, N, M, benign_pls)
 	if verbose:
 		PrintPipelines(benign_pls, N)
@@ -741,7 +748,6 @@ def main_gen(N, M, K, step=1.0, sigma1=0.5, sigma2=2.0, verbose=False) -> list:
 		complete = dpf.Simulation(sim_arg1)
 		complete_poisoned = []
 		for i in poisoned_list:
-			assert(i in complete)
 			if i in complete:
 				complete_poisoned.append(i)
 		perc = float(SumPipelines(pls, complete_poisoned)) / (N * M * step)
@@ -750,19 +756,21 @@ def main_gen(N, M, K, step=1.0, sigma1=0.5, sigma2=2.0, verbose=False) -> list:
 			print('%.4f' % perc, '%.4f' % duration, poisoned_list)
 		if verbose:
 			print(ReturnFunctionName(funcname))
+			print('%4f' % duration)
 			print(poisoned_list)
 			PrintPipelines(pls, N)
 		return float(perc)
 
 	return [
-		# CallFunc(BlockGreedy),
-		# CallFunc(DynamicSequentialAttack_std),
-		# CallFunc(DynamicSequentialAttack_mod),
-		# CallFunc(RandomAttack),
-		# CallFunc(NaiveGreedy),
+		CallFunc(RandomAttack),
+		CallFunc(NaiveGreedy),
+		CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
+		CallFunc(BlockGreedy),
+		CallFunc(DynamicSequentialAttack_std),
+		CallFunc(DynamicSequentialAttack_mod),
 		# CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
-		CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
-		CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=2),
+		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
+		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=2),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=4),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=K),
 	]
@@ -772,45 +780,14 @@ def main_onerun():
 	M = int(input())
 	K = int(input())
 	step = float(input())
-	main_gen(N, M, K, step, verbose=False)
-
-def main_multirun(times=100):
-	perclist = []
-	for time in range(times):
-		# if time % 10 == 0:
-		# 	print(time)
-		N = 40
-		perc = main_gen(N=N, M=10, K=int(N * 0.2), verbose=True)
-		for i in range(len(perc)):
-			if i >= len(perclist):
-				perclist.append([])
-			perclist[i].append(perc[i])
-	for i in range(len(perclist)):
-		print("%.4f"%statistics.mean(perclist[i]))
-
-def main_randomattack():
-	eps_Global = float(input())
-	N = int(input())
-	M = int(input())
-	K = int(input())
-	benign_pls = []
-	for _ in range(N):
-		line = input()
-		line = line.split("\t")[:-1]
-		benign_pls.append([dec(a) for a in line])
-	sim_arg = (eps_Global, N, M, benign_pls)
-	pls, poisoned_list = RandomAttack(sim_arg, K)
-	sim_arg1 = (eps_Global, N, M, pls)
-	complete = dpf.Simulation(sim_arg1)
-	for i in poisoned_list:
-		assert(i in complete)
-	perc = SumPipelines(pls, poisoned_list) / (N * M)
-	print(RandomAttack)
-	print(poisoned_list)
-	print('%4f' % perc)
-	PrintPipelines(pls, N)
+	config = {
+		'N': N,
+		'M': M,
+		'K': K,
+		'step': step,
+	}
+	main_gen(config, verbose=True)
 
 if __name__ == '__main__':
 	# main_gen(bpn=100, Kperc=0.05, verbose=True)
-	# main_multirun(times=1)
 	main_onerun()
