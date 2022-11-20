@@ -25,11 +25,14 @@ def onerun(N, M, K, step, time):
 	param = f'{N}\n{M}\n{K}\n{step}\n'
 
 	subprocess.run(['mkdir', '-p', f'EVALUATION/{foldername}/'])
-	output = subprocess.run(
-		['echo', f'$"{N}\n{M}\n{K}\n{step}\n"', '|', 'python', 'oflattack.py'], 
-		stdout=subprocess.PIPE
+	output = subprocess.Popen(
+		['python', 'oflattack.py'], 
+		stdin=subprocess.PIPE,
+		stdout=subprocess.PIPE,
+		stderr=subprocess.STDOUT,
 	)
-	output = output.stdout.decode('utf-8')
+	output = output.communicate(input=param.encode())[0]
+	output = output.decode('utf-8')
 	output = output.split('\n')[:-1]
 	cut(output, foldername, time, N)
 
