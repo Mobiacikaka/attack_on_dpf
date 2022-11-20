@@ -26,7 +26,7 @@ def onerun(N, M, K, step, time):
 
 	subprocess.run(['mkdir', '-p', f'EVALUATION/{foldername}/'])
 	output = subprocess.run(
-		['echo', f'"{param}"', '|', 'python', 'oflattack.py'], 
+		['echo', f'$"{N}\n{M}\n{K}\n{step}\n"', '|', 'python', 'oflattack.py'], 
 		stdout=subprocess.PIPE
 	)
 	output = output.stdout.decode('utf-8')
