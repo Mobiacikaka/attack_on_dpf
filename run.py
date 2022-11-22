@@ -14,11 +14,11 @@ def cut(output, foldername, time, N):
 	file_original.close()
 	output = output[N:]
 	while len(output) != 0:
-		data_func = output[:N+3]
+		data_func = output[:N+4]
 		file_func = open(f'EVALUATION/{foldername}/{time}.{data_func[0]}.txt', 'w')
 		for line in data_func:
 			file_func.write(line+'\n')
-		output = output[N+3:]
+		output = output[N+4:]
 		file_func.close()
 
 def onerun(N, M, K, step, time):
