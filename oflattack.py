@@ -27,24 +27,15 @@ def return_eps_U_list(sim_arg: tuple) -> list:
 
 	return eps_U_list
 
-def gendata(N, M, sigma=1.0) -> list:
-	benign_pls	= []
-	for _ in range(N):
-		pl = []
-		for _ in range(M):
-			rnd = random.expovariate(sigma)
-			pl.append(dec(dec_format % rnd))
-		benign_pls.append(pl)
-	return benign_pls
-
-def GenDataset(ratio, N, M, sigma1=1.0, sigma2=2.0) -> list:
+def GenDataset(ratio, N, M, sigma_mice=10.0, sigma_elephant=1.0) -> list:
+	assert(sigma_mice >= sigma_elephant)
 	benign_pls = []
 	for _ in range(N):
-		sigma = numpy.random.choice([sigma1, sigma2], 1, p=[ratio, 1-ratio])[0]
+		sigma = numpy.random.choice([sigma_mice, sigma_elephant], 1, p=[ratio, 1-ratio])[0]
 		pl = []
 		for _ in range(M):
 			rnd = random.expovariate(sigma)
-			pl.append(dec(dec_format % rnd))
+			pl.append(dec(dec_format % rnd) + alpha)
 		benign_pls.append(pl)
 	return benign_pls
 
@@ -137,6 +128,7 @@ def RandomAttack(sim_arg: tuple, K: int):
 	assert(N >= K)
 
 	poisoned_list = random.sample(list(range(N)), K)
+	poisoned_list.sort()
 
 	return pls, poisoned_list
 
@@ -486,7 +478,7 @@ def GreedyTheRecalculation(sim_arg: tuple, K: int):
 
 		## len(poisoned_list) += 1
 		poisoned_list = new_poisoned_list
-		print(poisoned_list)
+		# print(poisoned_list)
 		k2 -= 1
 
 	assert(len(poisoned_list) == K)
@@ -730,12 +722,12 @@ def main_gen(config: dict, verbose=False) -> list:
 	M = config.get('M', 10)
 	K = config.get('K', 10)
 	step = config.get('step', 1.0)
-	sigma1 = config.get('sigma1', 0.1)
-	sigma2 = config.get('sigma2', 1.0)
+	sigma_mice = config.get('sigma_mice', 10.0) # Expectation is 0.1
+	sigma_elephant = config.get('sigma_elephant', 1.0) # Expectation is 1.0
 	ratio = config.get('ratio', 0.75) # mice ratio
 
 	eps_Global = N * step
-	benign_pls = GenDataset(ratio, N, M, sigma1=sigma1, sigma2=sigma2)
+	benign_pls = GenDataset(ratio, N, M, sigma_mice=sigma_mice, sigma_elephant=sigma_elephant)
 	sim_arg = (eps_Global, N, M, benign_pls)
 	if verbose:
 		PrintPipelines(benign_pls, N)
@@ -762,12 +754,13 @@ def main_gen(config: dict, verbose=False) -> list:
 		return float(perc)
 
 	return [
-		CallFunc(RandomAttack),
-		CallFunc(NaiveGreedy),
+		CallFunc(GreedyTheRecalculation),
+		# CallFunc(RandomAttack),
+		# CallFunc(NaiveGreedy),
 		CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
-		CallFunc(BlockGreedy),
-		CallFunc(DynamicSequentialAttack_std),
-		CallFunc(DynamicSequentialAttack_mod),
+		# CallFunc(BlockGreedy),
+		# CallFunc(DynamicSequentialAttack_std),
+		# CallFunc(DynamicSequentialAttack_mod),
 		# CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=2),
@@ -786,7 +779,7 @@ def main_onerun():
 		'K': K,
 		'step': step,
 	}
-	main_gen(config, verbose=True)
+	main_gen(config, verbose=False)
 
 if __name__ == '__main__':
 	# main_gen(bpn=100, Kperc=0.05, verbose=True)
