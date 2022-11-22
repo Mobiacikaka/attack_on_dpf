@@ -748,6 +748,7 @@ def main_gen(config: dict, verbose=False) -> list:
 			print('%.4f' % perc, '%.4f' % duration, poisoned_list)
 		if verbose:
 			print(ReturnFunctionName(funcname))
+			print('%4f' % perc)
 			print('%4f' % duration)
 			print(poisoned_list)
 			PrintPipelines(pls, N)
@@ -778,7 +779,7 @@ def main_onerun():
 		'K': K,
 		'step': step,
 	}
-	main_gen(config, verbose=False)
+	main_gen(config, verbose=True)
 
 if __name__ == '__main__':
 	# main_gen(bpn=100, Kperc=0.05, verbose=True)
