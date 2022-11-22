@@ -448,8 +448,8 @@ def GreedyTheRecalculation(sim_arg: tuple, K: int):
 		new_poisoned_list = []
 		new_sum = 0
 		for insert_ts in range(N-K+1): # no insertion, so it's in the range of N-K+1
-			if insert_ts in poisoned_list:
-				continue
+			# if insert_ts in poisoned_list:
+			# 	continue
 
 			## generate insertion list
 			tmp_poisoned_list = copy.deepcopy(poisoned_list)
@@ -754,13 +754,12 @@ def main_gen(config: dict, verbose=False) -> list:
 		return float(perc)
 
 	return [
-		CallFunc(GreedyTheRecalculation),
-		# CallFunc(RandomAttack),
-		# CallFunc(NaiveGreedy),
-		CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
-		# CallFunc(BlockGreedy),
-		# CallFunc(DynamicSequentialAttack_std),
-		# CallFunc(DynamicSequentialAttack_mod),
+		# CallFunc(GreedyTheRecalculation),
+		CallFunc(RandomAttack),
+		CallFunc(NaiveGreedy),
+		CallFunc(BlockGreedy),
+		CallFunc(DynamicSequentialAttack_std),
+		CallFunc(DynamicSequentialAttack_mod),
 		# CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=2),
