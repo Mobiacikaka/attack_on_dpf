@@ -39,17 +39,14 @@ def GenDataset(ratio, N, M, sigma_mice=10.0, sigma_elephant=1.0) -> list:
 		benign_pls.append(pl)
 	return benign_pls
 
-def readdata(filename: str='benign_pls.csv') -> tuple:
-	pls_file = open(filename)
-	lines = pls_file.readlines()
+def ReadDataset(N) -> list:
 	benign_pls = []
-	for line in lines:
-		try:
-			line = line.replace('\n', '')
-			benign_pls.append([dec(item) for item in line.split("\t")])
-		except:
-			pass
-	return float(len(benign_pls)), len(benign_pls), len(benign_pls[0]), benign_pls
+	for _ in range(N):
+		line = input()
+		pl_str = line.split('\t')[:-1]
+		pl = [dec(dec_format % float(a)) for a in pl_str]
+		benign_pls.append(pl)
+	return benign_pls
 
 def PrintPipeline(pl: list):
 	for item in pl:
@@ -727,7 +724,8 @@ def main_gen(config: dict, verbose=False) -> list:
 	ratio = config.get('ratio', 0.75) # mice ratio
 
 	eps_Global = N * step
-	benign_pls = GenDataset(ratio, N, M, sigma_mice=sigma_mice, sigma_elephant=sigma_elephant)
+	# benign_pls = GenDataset(ratio, N, M, sigma_mice=sigma_mice, sigma_elephant=sigma_elephant)
+	benign_pls = ReadDataset(N)
 	sim_arg = (eps_Global, N, M, benign_pls)
 	if verbose:
 		PrintPipelines(benign_pls, N)
@@ -756,12 +754,12 @@ def main_gen(config: dict, verbose=False) -> list:
 
 	return [
 		# CallFunc(GreedyTheRecalculation),
-		CallFunc(RandomAttack),
-		CallFunc(NaiveGreedy),
-		CallFunc(BlockGreedy),
-		CallFunc(DynamicSequentialAttack_std),
-		CallFunc(DynamicSequentialAttack_mod),
-		# CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
+		# CallFunc(RandomAttack),
+		# CallFunc(NaiveGreedy),
+		# CallFunc(BlockGreedy),
+		# CallFunc(DynamicSequentialAttack_std),
+		# CallFunc(DynamicSequentialAttack_mod),
+		CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=2),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=4),

@@ -3,17 +3,27 @@
 
 import multiprocessing, subprocess
 
-multitimes = 10
-parent_dir = 'DATA.SINGLE.PARAM/'
+multitimes = 1
+parent_dir = 'TEST/'
 
 def cut(output, foldername, time, N):
 	data_original = output[:N]
+	if len(data_original) < N:
+		print(f'Error occur in {foldername} time {time}')
+		for line in output:
+			print(line)
+		return
 	file_original = open(f'EVALUATION/{foldername}/{time}.original.txt', 'w')
 	for line in data_original:
 		file_original.write(line+'\n')
 	file_original.close()
 	output = output[N:]
 	while len(output) != 0:
+		if len(output) < N+4:
+			print(f'Error occur in {foldername} time {time}')
+			for line in output:
+				print(line)
+			return
 		data_func = output[:N+4]
 		file_func = open(f'EVALUATION/{foldername}/{time}.{data_func[0]}.txt', 'w')
 		for line in data_func:
@@ -25,6 +35,15 @@ def onerun(N, M, K, step, time):
 	print("N", N, "M", M, "K", K, "step", step, "time", time)
 	foldername = f'{parent_dir}N_{N}_M_{M}_K_{K}_step_{step}'
 	param = f'{N}\n{M}\n{K}\n{step}\n'
+	def readoriginal() -> str:
+		_file = open(f'EVALUATION/{foldername}/{time}.original.txt')
+		lines = _file.readlines()
+		oridataset = ''
+		for line in lines:
+			oridataset += line
+		return oridataset
+	oridataset = readoriginal()
+	_input = param + oridataset
 
 	subprocess.run(['mkdir', '-p', f'EVALUATION/{foldername}/'])
 	output = subprocess.Popen(
@@ -33,7 +52,7 @@ def onerun(N, M, K, step, time):
 		stdout=subprocess.PIPE,
 		stderr=subprocess.STDOUT,
 	)
-	output = output.communicate(input=param.encode())[0]
+	output = output.communicate(input=_input.encode())[0]
 	output = output.decode('utf-8')
 	output = output.split('\n')[:-1]
 	cut(output, foldername, time, N)
@@ -80,6 +99,10 @@ def run_single_param():
 		for Kperc in Kperc_list
 		for step in step_list
 		for time in range(times // multitimes)
+	]
+
+	args = [
+		(50, 10, 10, 1.0, 0)
 	]
 
 	pool = multiprocessing.Pool(multiprocessing.cpu_count())
