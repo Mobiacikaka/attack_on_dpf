@@ -13,7 +13,7 @@ def cut(output, foldername, time, N):
 		print(f'Error occur in {foldername} time {time}')
 		errorfile = open(f'EVALUATION/{foldername}/{time}.error.txt', 'w')
 		for line in output:
-			errorfile.writelines(line)
+			errorfile.write(line + '\n')
 		return
 	file_original = open(f'EVALUATION/{foldername}/{time}.original.txt', 'w')
 	for line in data_original:
@@ -25,7 +25,7 @@ def cut(output, foldername, time, N):
 			print(f'Error occur in {foldername} time {time}')
 			errorfile = open(f'EVALUATION/{foldername}/{time}.error.txt', 'w')
 			for line in output:
-				errorfile.writelines(line)
+				errorfile.write(line + '\n')
 			return
 		data_func = output[:N + delta]
 		file_func = open(f'EVALUATION/{foldername}/{time}.{data_func[0]}.txt', 'w')
@@ -116,9 +116,9 @@ def run_single_param():
 			'M': M,
 			'K': int(Kperc * N),
 			'step': step,
+			'ratio': .75,
 			'exp_mice': 0.1,
 			'exp_elephant': 1.0,
-			'ratio': .75,
 		}, time)
 		for N in N_list
 		for M in M_list

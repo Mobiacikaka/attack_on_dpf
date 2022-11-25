@@ -716,9 +716,9 @@ def main_gen(config: dict, verbose=True) -> list:
 	M = config.get('M', 10)
 	K = config.get('K', 10)
 	step = config.get('step', 1.0)
+	ratio = config.get('ratio', 0.75) # mice ratio
 	exp_mice = config.get('exp_mice', 0.1) # Expectation is 0.1
 	exp_elephant = config.get('exp_elephant', 1.0) # Expectation is 1.0
-	ratio = config.get('ratio', 0.75) # mice ratio
 
 	eps_Global = N * step
 	benign_pls = GenDataset(ratio, N, M, exp_mice=exp_mice, exp_elephant=exp_elephant)
