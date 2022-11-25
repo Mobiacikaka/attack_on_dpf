@@ -6,7 +6,9 @@ import multiprocessing, subprocess
 multitimes = 1
 parent_dir = 'DATA.NO.MICE/'
 
-def cut(output, foldername, time, N):
+def cut(output, foldername, time, config):
+	N = config['N']
+	K = config['K']
 	data_original = output[:N]
 	delta = 4
 	if len(data_original) < N:
@@ -21,28 +23,18 @@ def cut(output, foldername, time, N):
 	file_original.close()
 	output = output[N:]
 	while len(output) != 0:
-		if len(output) < N + delta:
+		if len(output) < K + delta:
 			print(f'Error occur in {foldername} time {time}')
 			errorfile = open(f'EVALUATION/{foldername}/{time}.error.txt', 'w')
 			for line in output:
 				errorfile.write(line + '\n')
 			return
-		data_func = output[:N + delta]
+		data_func = output[:K + delta]
 		file_func = open(f'EVALUATION/{foldername}/{time}.{data_func[0]}.txt', 'w')
 		for line in data_func:
 			file_func.write(line+'\n')
-		output = output[N + delta:]
+		output = output[K + delta:]
 		file_func.close()
-
-def getconfig(config) -> tuple:
-	N = config.get('N', 100)
-	M = config.get('M', 10)
-	K = config.get('K', 10)
-	step = config.get('step', 1.0)
-	exp_mice = config.get('exp_mice', 0.1) # Expectation is 0.1
-	exp_elephant = config.get('exp_elephant', 1.0) # Expectation is 1.0
-	ratio = config.get('ratio', 0.75) # mice ratio
-	return N, M, K, step, exp_mice, exp_elephant, ratio
 
 def onerun(config: dict, time):
 	foldername = ''
@@ -73,7 +65,7 @@ def onerun(config: dict, time):
 	output = output.communicate(input=param.encode())[0]
 	output = output.decode('utf-8')
 	output = output.split('\n')[:-1]
-	cut(output, foldername, time, config.get('N'))
+	cut(output, foldername, time, config)
 
 def multirun(config, time):
 	for i in range(multitimes):

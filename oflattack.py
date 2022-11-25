@@ -54,11 +54,13 @@ def PrintPipeline(pl: list):
 		print(float(item), end='\t')
 	print()
 
-def PrintPipelines(pls: list, N: int=0):
-	if N == 0:
-		N = len(pls)
-	for i in range(N):
-		PrintPipeline(pls[i])
+def PrintPipelines(pls: list, L: list=[]):
+	lenth = len(pls)
+	if len(L) == 0:
+		L = list(range(lenth))
+	for i in range(lenth):
+		if i in L:
+			PrintPipeline(pls[i])
 
 def SumPipelines(pls, list_no: list=[]):
 	if len(list_no) == 0:
@@ -725,7 +727,7 @@ def main_gen(config: dict, verbose=True) -> list:
 	# benign_pls = ReadDataset(N)
 	sim_arg = (eps_Global, N, M, benign_pls)
 	if verbose:
-		PrintPipelines(benign_pls, N)
+		PrintPipelines(benign_pls, list(range(N)))
 
 	def CallFunc(funcname, **kwargs) -> float:
 		if not verbose:
@@ -749,7 +751,7 @@ def main_gen(config: dict, verbose=True) -> list:
 			print('%4f' % perc)
 			print('%4f' % duration)
 			print(poisoned_list)
-			PrintPipelines(pls, N)
+			PrintPipelines(pls, poisoned_list)
 		return float(perc)
 
 	return [
