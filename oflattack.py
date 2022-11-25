@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # vim:ts=2:sw=2:noet
 from decimal import Decimal as dec
+from itertools import count
 import random, numpy
 import dpf
 import copy
@@ -27,11 +28,11 @@ def return_eps_U_list(sim_arg: tuple) -> list:
 
 	return eps_U_list
 
-def GenDataset(ratio, N, M, sigma_mice=10.0, sigma_elephant=1.0) -> list:
-	assert(sigma_mice >= sigma_elephant)
+def GenDataset(ratio, N, M, exp_mice, exp_elephant) -> list:
+	assert(exp_mice <= exp_elephant)
 	benign_pls = []
 	for _ in range(N):
-		sigma = numpy.random.choice([sigma_mice, sigma_elephant], 1, p=[ratio, 1-ratio])[0]
+		sigma = 1 / numpy.random.choice([exp_mice, exp_elephant], p=[ratio, 1-ratio])
 		pl = []
 		for _ in range(M):
 			rnd = random.expovariate(sigma)
@@ -78,14 +79,14 @@ def getDominantShareIDList(pls):
 		ds_id_list.append(ds_id)
 	return ds_id_list
 
-def MaximizeAllocationAtTS(dpfsys: dpf.DPF, ) -> list:
+def MaximizeAllocationAtTS(dpfsys: dpf.DPF) -> list:
 	unallocated_eps_list = copy.deepcopy(dpfsys.eps_U)
 	for j in range(dpfsys.M):
 		unallocated_eps_list[j] += dpfsys.eps_G[j] / dpfsys.N
 
 	wp = dpfsys.wp
 	sorted_pipelines = sorted(list(wp.keys()), key=lambda x: dpfsys.DominantShareList(wp.get(x)))
-	zeroflag = False
+	canrunflag = False # check if exist waiting pipeline can run
 	poisoned_pl = []
 	for bplno in sorted_pipelines:
 		if sum(unallocated_eps_list) <= sum(poisoned_pl):
@@ -96,6 +97,7 @@ def MaximizeAllocationAtTS(dpfsys: dpf.DPF, ) -> list:
 		if not dpfsys.CanRun(bpl, unallocated_eps_list):
 			continue
 
+		canrunflag = True
 		ds = max(bpl)
 		tmp_poisoned_pl = []
 		for j in range(dpfsys.M):
@@ -109,15 +111,11 @@ def MaximizeAllocationAtTS(dpfsys: dpf.DPF, ) -> list:
 
 		for j in range(dpfsys.M):
 			unallocated_eps_list[j] -= bpl[j]
-			if unallocated_eps_list[j] == 0:
-				zeroflag = True
 
-	if not zeroflag:
-		if sum(unallocated_eps_list) > sum(poisoned_pl):
-			poisoned_pl = unallocated_eps_list
+	if not canrunflag:
+		poisoned_pl = unallocated_eps_list
 
 	return poisoned_pl
-
 
 ## Allocation Functions
 def RandomAttack(sim_arg: tuple, K: int):
@@ -424,7 +422,7 @@ def GreedyFramework(sim_arg: tuple, K: int, method='__Tree_MaxEveryDepth', **kwa
 				max_poisoned_list = tmp_poisoned_list
 
 		poisoned_list = max_poisoned_list
-		# print(poisoned_list)
+		# print(max_sum, poisoned_list)
 		k2 -= 1
 
 	assert(len(poisoned_list) == K)
@@ -445,9 +443,6 @@ def GreedyTheRecalculation(sim_arg: tuple, K: int):
 		new_poisoned_list = []
 		new_sum = 0
 		for insert_ts in range(N-K+1): # no insertion, so it's in the range of N-K+1
-			# if insert_ts in poisoned_list:
-			# 	continue
-
 			## generate insertion list
 			tmp_poisoned_list = copy.deepcopy(poisoned_list)
 			tmp_poisoned_list.append(insert_ts)
@@ -458,11 +453,12 @@ def GreedyTheRecalculation(sim_arg: tuple, K: int):
 			dpfsys = dpf.DPF(eps_Global, N, M)
 			for i in range(N-K+1):
 				if i in tmp_poisoned_list:
-					tmp_poisoned_pl = MaximizeAllocationAtTS(dpfsys)
-					tmp_sum += sum(tmp_poisoned_pl)
-					dpfsys.AddToWaiting(tmp_poisoned_pl)
-					dpfsys.OnPipelineArrival(tmp_poisoned_pl)
-					dpfsys.OnSchedulerTimer()
+					for _ in range(tmp_poisoned_list.count(i)):
+						tmp_poisoned_pl = MaximizeAllocationAtTS(dpfsys)
+						tmp_sum += sum(tmp_poisoned_pl)
+						dpfsys.AddToWaiting(tmp_poisoned_pl)
+						dpfsys.OnPipelineArrival(tmp_poisoned_pl)
+						dpfsys.OnSchedulerTimer()
 				if i >= N-K:
 					break
 				dpfsys.AddToWaiting(pls[i])
@@ -475,7 +471,7 @@ def GreedyTheRecalculation(sim_arg: tuple, K: int):
 
 		## len(poisoned_list) += 1
 		poisoned_list = new_poisoned_list
-		# print(poisoned_list)
+		# print(new_sum, poisoned_list)
 		k2 -= 1
 
 	assert(len(poisoned_list) == K)
@@ -489,6 +485,7 @@ def GreedyTheRecalculation(sim_arg: tuple, K: int):
 	dpfsys = dpf.DPF(eps_Global, N, M)
 	for i in range(N):
 		if i in poisoned_list:
+			assert(poisoned_list.count(i) == 1)
 			poisoned_pl = MaximizeAllocationAtTS(dpfsys)
 			pls.insert(i, poisoned_pl)
 		dpfsys.AddToWaiting(pls[i])
@@ -714,23 +711,25 @@ def DynamicSequentialAttack_mod(sim_arg: tuple, K: int):
 	return pls, poisoned_list
 
 ## Run Functions
-def main_gen(config: dict, verbose=False) -> list:
+def main_gen(config: dict, verbose=True) -> list:
 	N = config.get('N', 100)
 	M = config.get('M', 10)
 	K = config.get('K', 10)
 	step = config.get('step', 1.0)
-	sigma_mice = config.get('sigma_mice', 10.0) # Expectation is 0.1
-	sigma_elephant = config.get('sigma_elephant', 1.0) # Expectation is 1.0
+	exp_mice = config.get('exp_mice', 0.1) # Expectation is 0.1
+	exp_elephant = config.get('exp_elephant', 1.0) # Expectation is 1.0
 	ratio = config.get('ratio', 0.75) # mice ratio
 
 	eps_Global = N * step
-	# benign_pls = GenDataset(ratio, N, M, sigma_mice=sigma_mice, sigma_elephant=sigma_elephant)
-	benign_pls = ReadDataset(N)
+	benign_pls = GenDataset(ratio, N, M, exp_mice=exp_mice, exp_elephant=exp_elephant)
+	# benign_pls = ReadDataset(N)
 	sim_arg = (eps_Global, N, M, benign_pls)
 	if verbose:
 		PrintPipelines(benign_pls, N)
 
 	def CallFunc(funcname, **kwargs) -> float:
+		if not verbose:
+			print(ReturnFunctionName(funcname), kwargs)
 		start_time = time.time()
 		pls, poisoned_list = funcname(copy.deepcopy(sim_arg), K, **kwargs)
 		duration = time.time() - start_time
@@ -742,8 +741,9 @@ def main_gen(config: dict, verbose=False) -> list:
 				complete_poisoned.append(i)
 		perc = float(SumPipelines(pls, complete_poisoned)) / (N * M * step)
 		if not verbose:
-			print(ReturnFunctionName(funcname), kwargs)
-			print('%.4f' % perc, '%.4f' % duration, poisoned_list)
+			print('%.4f' % perc, '%.4f' % duration)
+			print(poisoned_list)
+			print(len(complete_poisoned) == K)
 		if verbose:
 			print(ReturnFunctionName(funcname))
 			print('%4f' % perc)
@@ -754,31 +754,37 @@ def main_gen(config: dict, verbose=False) -> list:
 
 	return [
 		# CallFunc(GreedyTheRecalculation),
-		# CallFunc(RandomAttack),
-		# CallFunc(NaiveGreedy),
-		# CallFunc(BlockGreedy),
-		# CallFunc(DynamicSequentialAttack_std),
-		# CallFunc(DynamicSequentialAttack_mod),
-		CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
-		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
+		# CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
+		CallFunc(RandomAttack),
+		CallFunc(NaiveGreedy),
+		CallFunc(BlockGreedy),
+		CallFunc(DynamicSequentialAttack_std),
+		CallFunc(DynamicSequentialAttack_mod),
+		CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=2),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=4),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=K),
 	]
 
-def main_onerun():
+def main_onerun(verbose=True):
 	N = int(input())
 	M = int(input())
 	K = int(input())
 	step = float(input())
+	ratio = float(input())
+	exp_mice = float(input())
+	exp_elephant = float(input())
 	config = {
 		'N': N,
 		'M': M,
 		'K': K,
 		'step': step,
+		'ratio': ratio,
+		'exp_mice': exp_mice,
+		'exp_elephant': exp_elephant,
 	}
-	main_gen(config, verbose=True)
+	main_gen(config, verbose=verbose)
 
 if __name__ == '__main__':
 	# main_gen(bpn=100, Kperc=0.05, verbose=True)
-	main_onerun()
+	main_onerun(True)
