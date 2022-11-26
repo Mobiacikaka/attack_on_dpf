@@ -11,13 +11,13 @@ def cut(output, foldername, time, config, read_flag):
 	K = config['K']
 	data_original = output[:N]
 	delta = 4
-	if len(data_original) < N:
-		print(f'Error occur in {foldername} time {time}')
-		errorfile = open(f'EVALUATION/{foldername}/{time}.error.txt', 'w')
-		for line in output:
-			errorfile.write(line + '\n')
-		return
 	if not read_flag:
+		if len(data_original) < N:
+			print(f'Error occur in {foldername} time {time}')
+			errorfile = open(f'EVALUATION/{foldername}/{time}.error.txt', 'w')
+			for line in output:
+				errorfile.write(line + '\n')
+			return
 		file_original = open(f'EVALUATION/{foldername}/{time}.original.txt', 'w')
 		for line in data_original:
 			file_original.write(line+'\n')
