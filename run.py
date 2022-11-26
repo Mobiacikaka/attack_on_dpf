@@ -6,7 +6,7 @@ import multiprocessing, subprocess
 multitimes = 1
 parent_dir = 'DATA.NO.MICE/'
 
-def cut(output, foldername, time, config):
+def cut(output, foldername, time, config, read_flag):
 	N = config['N']
 	K = config['K']
 	data_original = output[:N]
@@ -17,11 +17,12 @@ def cut(output, foldername, time, config):
 		for line in output:
 			errorfile.write(line + '\n')
 		return
-	file_original = open(f'EVALUATION/{foldername}/{time}.original.txt', 'w')
-	for line in data_original:
-		file_original.write(line+'\n')
-	file_original.close()
-	output = output[N:]
+	if not read_flag:
+		file_original = open(f'EVALUATION/{foldername}/{time}.original.txt', 'w')
+		for line in data_original:
+			file_original.write(line+'\n')
+		file_original.close()
+		output = output[N:]
 	while len(output) != 0:
 		if len(output) < K + delta:
 			print(f'Error occur in {foldername} time {time}')
@@ -36,7 +37,15 @@ def cut(output, foldername, time, config):
 		output = output[K + delta:]
 		file_func.close()
 
-def onerun(config: dict, time):
+def readoriginal(foldername, time) -> str:
+	_file = open(f'EVALUATION/{foldername}/{time}.original.txt')
+	lines = _file.readlines()
+	oridataset = ''
+	for line in lines:
+		oridataset += line
+	return oridataset
+
+def onerun(config: dict, time, read_flag):
 	foldername = ''
 	param = ''
 	for name, val in config.items():
@@ -45,15 +54,11 @@ def onerun(config: dict, time):
 		param += f'{val}\n'
 	print(f'time\t{time}')
 	foldername = parent_dir + foldername
-	def readoriginal() -> str:
-		_file = open(f'EVALUATION/{foldername}/{time}.original.txt')
-		lines = _file.readlines()
-		oridataset = ''
-		for line in lines:
-			oridataset += line
-		return oridataset
-	# oridataset = readoriginal()
-	# _input = param + oridataset
+
+	param += f'{read_flag}\n'
+	if read_flag:
+		oridataset = readoriginal(foldername, time)
+		param += oridataset
 
 	subprocess.run(['mkdir', '-p', f'EVALUATION/{foldername}/'])
 	output = subprocess.Popen(
@@ -65,11 +70,11 @@ def onerun(config: dict, time):
 	output = output.communicate(input=param.encode())[0]
 	output = output.decode('utf-8')
 	output = output.split('\n')[:-1]
-	cut(output, foldername, time, config)
+	cut(output, foldername, time, config, read_flag)
 
-def multirun(config, time):
+def multirun(config, time, read_flag):
 	for i in range(multitimes):
-		onerun(config, time * multitimes + i)
+		onerun(config, time * multitimes + i, read_flag)
 
 def run_fixed_epsG():
 	M_list = [10]
@@ -108,10 +113,10 @@ def run_single_param():
 			'M': M,
 			'K': int(Kperc * N),
 			'step': step,
-			'ratio': .75,
+			'ratio': 0,
 			'exp_mice': 0.1,
 			'exp_elephant': 1.0,
-		}, time)
+		}, time, True)
 		for N in N_list
 		for M in M_list
 		for Kperc in Kperc_list

@@ -721,12 +721,15 @@ def main_gen(config: dict, verbose=True) -> list:
 	ratio = config.get('ratio', 0.75) # mice ratio
 	exp_mice = config.get('exp_mice', 0.1) # Expectation is 0.1
 	exp_elephant = config.get('exp_elephant', 1.0) # Expectation is 1.0
+	read_flag = config.get('read_flag', False)
 
 	eps_Global = N * step
-	benign_pls = GenDataset(ratio, N, M, exp_mice=exp_mice, exp_elephant=exp_elephant)
-	# benign_pls = ReadDataset(N)
+	if not read_flag:
+		benign_pls = GenDataset(ratio, N, M, exp_mice=exp_mice, exp_elephant=exp_elephant) # Random Generate Dataset
+	else:
+		benign_pls = ReadDataset(N) # read from stdin
 	sim_arg = (eps_Global, N, M, benign_pls)
-	if verbose:
+	if verbose and not read_flag:
 		PrintPipelines(benign_pls, list(range(N)))
 
 	def CallFunc(funcname, **kwargs) -> float:
@@ -757,11 +760,11 @@ def main_gen(config: dict, verbose=True) -> list:
 	return [
 		# CallFunc(GreedyTheRecalculation),
 		# CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
-		CallFunc(RandomAttack),
-		CallFunc(NaiveGreedy),
-		CallFunc(BlockGreedy),
-		CallFunc(DynamicSequentialAttack_std),
-		CallFunc(DynamicSequentialAttack_mod),
+		# CallFunc(RandomAttack),
+		# CallFunc(NaiveGreedy),
+		# CallFunc(BlockGreedy),
+		# CallFunc(DynamicSequentialAttack_std),
+		# CallFunc(DynamicSequentialAttack_mod),
 		CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=2),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=4),
@@ -776,6 +779,7 @@ def main_onerun(verbose=True):
 	ratio = float(input())
 	exp_mice = float(input())
 	exp_elephant = float(input())
+	read_flag = True if input() == 'True' else False
 	config = {
 		'N': N,
 		'M': M,
@@ -784,6 +788,7 @@ def main_onerun(verbose=True):
 		'ratio': ratio,
 		'exp_mice': exp_mice,
 		'exp_elephant': exp_elephant,
+		'read_flag': read_flag,
 	}
 	main_gen(config, verbose=verbose)
 
