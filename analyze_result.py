@@ -2,7 +2,6 @@
 # vim:ts=2:sw=2:noet
 
 import statistics
-from matplotlib.rcsetup import CapStyle
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -201,6 +200,9 @@ def main():
 		'datafolder': 'DATA.SINGLE.PARAM',
 	}
 	DrawGraphics(config)
+
+def Draw1():
+	parent_folder = 'DATA.MICE.AND.ELEPHANT.1'
 
 if __name__ == '__main__':
 	plt.rc('font', size=10)          # controls default text sizes
