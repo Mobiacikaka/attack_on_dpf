@@ -51,7 +51,7 @@ def read_folder(foldername):
 		print(item)
 
 def draw_N_effect(
-	res_dict, 
+	res_dict,
 	parent_folder,
 	N_list = [50, 100, 150, 200, 250],
 	M_list = [5, 10, 15, 20, 25, 30],
@@ -93,7 +93,7 @@ def draw_N_effect(
 		plt.clf()
 
 def draw_M_effect(
-	res_dict, 
+	res_dict,
 	parent_folder,
 	N_list = [50, 100, 150, 200, 250],
 	M_list = [5, 10, 15, 20, 25, 30],
@@ -135,7 +135,7 @@ def draw_M_effect(
 		plt.clf()
 
 def draw_K_effect(
-	res_dict, 
+	res_dict,
 	parent_folder,
 	N_list = [50, 100, 150, 200, 250],
 	M_list = [5, 10, 15, 20, 25, 30],
@@ -176,39 +176,8 @@ def draw_K_effect(
 		plt.savefig(figurename, format='eps')
 		plt.clf()
 
-def draw_GRAIN_effect():
-	N_list = [40, 60, 120, 160, 240]
-	M_list = [10]
-	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
-	datafolder = 'DATA.FIXED.EPS_G'
-	funcname = ['GTR', 'Block Greedy', 'DSA1', 'DSA2']
-	eps_G = 120.0
-	funcnum = 4
-
-	for sigma in [0.5, 1.0, 2.0]:
-		for M in M_list:
-			for Kperc in Kperc_list:
-				## Draw Picture
-				y = [[], [], [], [], []]
-				for N in N_list:
-					folderargs = (sigma, N, M, int(Kperc * N), eps_G/N)
-					res_hundredtimes = read_folder(folderargs, datafolder, funcnum)
-					for i in range(funcnum):
-						y[i].append(statistics.mean(res_hundredtimes[i]) / (eps_G/N))
-				for i in range(funcnum):
-					plt.plot(N_list, y[i], label=funcname[i], marker='o')
-				plt.xlabel('N')
-				plt.ylabel('Gain Fraction')
-				plt.xticks(N_list)
-				plt.legend()
-				os.system(f'mkdir -p EVALUATION/{datafolder}/images/')
-				filename = f'EVALUATION/{datafolder}/images/Grain_Effect_sigma{sigma}_epsG{eps_G}_M{M}_Kperc{Kperc}.eps'
-				plt.tight_layout()
-				plt.savefig(filename, format='eps')
-				plt.clf()
-
 def Draw1(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
-	parent_folder = './EVALUATION/DATA.MICE.AND.ELEPHANT.1/'
+	parent_folder = './EVALUATION/DATA.MICE.AND.ELEPHANT.2/'
 	N_list = [50, 100, 150, 200, 250]
 	M_list = [5, 10, 15, 20, 25, 30]
 	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
