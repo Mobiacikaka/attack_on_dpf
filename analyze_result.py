@@ -89,6 +89,7 @@ def draw_N_effect(
 		plt.legend(fontsize='medium')
 		figurename = f'{foldername}/N_M_{M}_Kperc_{Kperc}_step_{step}.eps'
 		plt.tight_layout()
+		plt.grid()
 		plt.savefig(figurename, format='eps')
 		plt.clf()
 
@@ -131,6 +132,7 @@ def draw_M_effect(
 		plt.legend(fontsize='medium')
 		figurename = f'{foldername}/M_N_{N}_Kperc_{Kperc}_step_{step}.eps'
 		plt.tight_layout()
+		plt.grid()
 		plt.savefig(figurename, format='eps')
 		plt.clf()
 
@@ -173,11 +175,12 @@ def draw_K_effect(
 		plt.legend(fontsize='medium')
 		figurename = f'{foldername}/Kperc_N_{N}_M_{M}_step_{step}.eps'
 		plt.tight_layout()
+		plt.grid()
 		plt.savefig(figurename, format='eps')
 		plt.clf()
 
 def Draw1(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
-	parent_folder = './EVALUATION/DATA.MICE.AND.ELEPHANT.2/'
+	parent_folder = './EVALUATION/DATA.MICE.AND.ELEPHANT.1/'
 	N_list = [50, 100, 150, 200, 250]
 	M_list = [5, 10, 15, 20, 25, 30]
 	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
@@ -230,4 +233,4 @@ if __name__ == '__main__':
 	markers = ['o', 'v', 'P', 's', 'p']
 	yticks = np.arange(0, 1.1, 0.1)
 
-	Draw1()
+	Draw1(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
