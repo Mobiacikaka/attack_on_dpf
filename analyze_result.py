@@ -93,6 +93,49 @@ def draw_N_effect(
 		plt.savefig(figurename, format='eps')
 		plt.clf()
 
+def draw_N_effect2(
+	res_dict1,
+	res_dict2,
+	N_list = [50, 100, 150, 200, 250],
+	M_list = [10],
+	Kperc_list = [0.3],
+	step_list = [1.0],
+):
+	foldername = 'images'
+	subprocess.run(['mkdir', '-p', foldername])
+
+	args = [
+		(M, Kperc, step)
+		for M in M_list
+		for Kperc in Kperc_list
+		for step in step_list
+	]
+
+	for arg in args:
+		M, Kperc, step = arg
+		mean1 = [[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))]
+		stdev1 = [[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))]
+		mean2 = [[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))]
+		stdev2 = [[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))]
+		for i in range(len(N_list)):
+			N = N_list[i]
+			res1 = res_dict1[(N, M, int(Kperc * N), step)]
+			res2 = res_dict2[(N, M, int(Kperc * N), step)]
+			for j in range(len(res1)):
+				mean_func, stdev_func = res1[j]
+				mean1[j][i] = mean_func
+				stdev1[j][i] = stdev_func
+			for j in range(len(res2)):
+				mean_func, stdev_func = res2[j]
+				mean2[j][i] = mean_func
+				stdev2[j][i] = stdev_func
+		fig, (ax1, ax2) = plt.subplot(1, 2, sharex=True, sharey=True)
+		for i in range(len(funcname_list)):
+			ax1.errorbar(N_list, mean1[i], stdev1[i], label=funcname_list[i], marker=markers[i])
+		for i in range(len(funcname_list)):
+			ax2.errorbar(N_list, mean2[i], stdev2[i], label=funcname_list[i], marker=markers[i])
+		plt.show()
+
 def draw_M_effect(
 	res_dict,
 	parent_folder,
@@ -214,6 +257,49 @@ def Draw1(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
 	if draw_K_flag:
 		draw_K_effect(res_dict, parent_folder, N_list=N_list, M_list=M_list, Kperc_list=Kperc_list)
 
+def Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
+	parent_folder1 = './EVALUATION/DATA.MICE.AND.ELEPHANT.1/'
+	parent_folder2 = './EVALUATION/DATA.MICE.AND.ELEPHANT.2/'
+
+	N_list = [50, 100, 150, 200, 250]
+	M_list = [5, 10, 15, 20, 25, 30]
+	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
+
+	args = [
+		(N, M, int(Kperc * N), 1.0)
+		for N in N_list
+		for M in M_list
+		for Kperc in Kperc_list
+	]
+
+	res_dict1 = {}
+	res_dict2 = {}
+	def read_big_folder(parent_folder):
+		res_dict = {}
+		for arg in args:
+			N, M, K, step = arg
+			foldername = parent_folder + f'N_{N}_M_{M}_K_{K}_step_{step}'
+			res_hundredtimes = read_folder(foldername)
+			y = [] # [(mean1, stdev1), (mean2, stdev2), (mean3, stdev3)]
+			for i in range(len(funcname_list)):
+				mean = statistics.mean(res_hundredtimes[i])
+				stdev = statistics.stdev(res_hundredtimes[i])
+				# print(mean, stdev, funcname_list[i])
+				y.append((mean, stdev))
+			res_dict[arg] = y
+		return res_dict
+	res_dict1 = read_big_folder(parent_folder1)
+	res_dict2 = read_big_folder(parent_folder2)
+
+	if draw_N_flag:
+		draw_N_effect2(res_dict1, res_dict2, N_list)
+
+	if draw_M_flag:
+		pass
+
+	if draw_K_flag:
+		pass
+
 if __name__ == '__main__':
 	plt.rc('font', size=10)          # controls default text sizes
 	plt.rc('axes', titlesize=10)     # fontsize of the axes title
@@ -233,4 +319,5 @@ if __name__ == '__main__':
 	markers = ['o', 'v', 'P', 's', 'p']
 	yticks = np.arange(0, 1.1, 0.1)
 
-	Draw1(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
+	# Draw1(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
+	Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
