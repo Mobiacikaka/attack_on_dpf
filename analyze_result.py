@@ -5,7 +5,11 @@ import statistics
 from matplotlib import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import os
+
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
 
 def read_onetime(foldername, times) -> list:
 	res = []
@@ -100,8 +104,11 @@ def draw_N_effect2(
 	Kperc_list = [0.3],
 	step_list = [1.0],
 ):
-	foldername = 'images'
+	foldername = 'EVALUATION/images'
 	subprocess.run(['mkdir', '-p', foldername])
+
+	## Wei: 修改图的大小
+	plt.rcParams["figure.figsize"] = 10, 6
 
 	args = [
 		(M, Kperc, step)
@@ -125,24 +132,25 @@ def draw_N_effect2(
 					mean[k][j][i] = mean_func
 					stdev[k][j][i] = stdev_func
 		fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
+
 		for k in range(2):
 			for i in range(len(funcname_list)):
-				axs[k].errorbar(N_list, mean[k][i], stdev[k][i], label=funcname_list[i], marker=markers[i])
-		for ax in axs:
-			ax.set(xlabel='N', ylabel='Gain Fraction', xticks=N_list, yticks=yticks, title='yes')
+				axs[k].errorbar(N_list, mean[k][i], stdev[k][i], marker=markers[i])
+
+		titles = ['mice 75%, elephant 25%', 'mice 0%, elephant 100%']
+		for k in range(2):
+			ax = axs[k]
+			ax.set(xlabel='N', ylabel='Gain Fraction', xticks=N_list, yticks=yticks, title=titles[k])
 			pos = ax.get_position()
-			ax.set_position([pos.x0, pos.y0, pos.width, pos.height * 0.85])
+			ax.set_position([pos.x0, pos.y0, pos.width, pos.height * 0.95])
 			ax.grid()
-		fig.legend(funcname_list, ncol=3, loc="upper center")
-		# plt.rc('font', size=10)          # controls default text sizes
-		# plt.rc('axes', titlesize=8)     # fontsize of the axes title
-		# plt.rc('axes', labelsize=8)     # fontsize of the x and y labels
-		# plt.rc('xtick', labelsize=8)    # fontsize of the tick labels
-		# plt.rc('ytick', labelsize=8)    # fontsize of the tick labels
-		# plt.rc('legend', fontsize=10)    # legend fontsize
-		# plt.rc('figure', titlesize=10)   # fontsize of the figure title
-		plt.tight_layout()
-		plt.show()
+
+		## Wei: 修改图示位置
+		fig.legend(funcname_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
+			ncol=3, fancybox=True) #, shadow=True)
+		figurename = f'{foldername}/N_M_{M}_Kperc_{Kperc}_step_{step}.eps'
+		plt.savefig(figurename, format='eps')
+		plt.clf()
 
 def draw_M_effect(
 	res_dict,
@@ -184,6 +192,61 @@ def draw_M_effect(
 		figurename = f'{foldername}/M_N_{N}_Kperc_{Kperc}_step_{step}.eps'
 		plt.tight_layout()
 		plt.grid()
+		plt.savefig(figurename, format='eps')
+		plt.clf()
+
+def draw_M_effect2(
+	res_dicts: list,
+	N_list = [50, 100, 150, 200, 250],
+	M_list = [10],
+	Kperc_list = [0.3],
+	step_list = [1.0],
+):
+	foldername = 'EVALUATION/images'
+	subprocess.run(['mkdir', '-p', foldername])
+
+	## Wei: 修改图的大小
+	plt.rcParams["figure.figsize"] = 10, 6
+
+	args = [
+		(N, Kperc, step)
+		for N in N_list
+		for Kperc in Kperc_list
+		for step in step_list
+	]
+
+	for arg in args:
+		N, Kperc, step = arg
+		mean = [[[0 for _ in range(len(M_list))] for _ in range(len(funcname_list))] for _ in range(2)]
+		stdev = [[[0 for _ in range(len(M_list))] for _ in range(len(funcname_list))] for _ in range(2)]
+		for i in range(len(M_list)):
+			M = M_list[i]
+			res = [[], []]
+			res[0] = res_dicts[0][(N, M, int(Kperc * N), step)]
+			res[1] = res_dicts[1][(N, M, int(Kperc * N), step)]
+			for k in range(2):
+				for j in range(len(res[0])):
+					mean_func, stdev_func = res[k][j]
+					mean[k][j][i] = mean_func
+					stdev[k][j][i] = stdev_func
+		fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
+
+		for k in range(2):
+			for i in range(len(funcname_list)):
+				axs[k].errorbar(M_list, mean[k][i], stdev[k][i], marker=markers[i])
+
+		titles = ['mice 75%, elephant 25%', 'mice 0%, elephant 100%']
+		for k in range(2):
+			ax = axs[k]
+			ax.set(xlabel='M', ylabel='Gain Fraction', xticks=M_list, yticks=yticks, title=titles[k])
+			pos = ax.get_position()
+			ax.set_position([pos.x0, pos.y0, pos.width, pos.height * 0.95])
+			ax.grid()
+
+		## Wei: 修改图示位置
+		fig.legend(funcname_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
+			ncol=3, fancybox=True) #, shadow=True)
+		figurename = f'{foldername}/M_N_{N}_Kperc_{Kperc}_step_{step}.eps'
 		plt.savefig(figurename, format='eps')
 		plt.clf()
 
@@ -230,6 +293,61 @@ def draw_K_effect(
 		plt.savefig(figurename, format='eps')
 		plt.clf()
 
+def draw_K_effect2(
+	res_dicts: list,
+	N_list = [50, 100, 150, 200, 250],
+	M_list = [10],
+	Kperc_list = [0.3],
+	step_list = [1.0],
+):
+	foldername = 'EVALUATION/images'
+	subprocess.run(['mkdir', '-p', foldername])
+
+	## Wei: 修改图的大小
+	plt.rcParams["figure.figsize"] = 10, 6
+
+	args = [
+		(N, M, step)
+		for N in N_list
+		for M in M_list
+		for step in step_list
+	]
+
+	for arg in args:
+		N, M, step = arg
+		mean = [[[0 for _ in range(len(Kperc_list))] for _ in range(len(funcname_list))] for _ in range(2)]
+		stdev = [[[0 for _ in range(len(Kperc_list))] for _ in range(len(funcname_list))] for _ in range(2)]
+		for i in range(len(Kperc_list)):
+			K = int(Kperc_list[i] * N)
+			res = [[], []]
+			res[0] = res_dicts[0][(N, M, K, step)]
+			res[1] = res_dicts[1][(N, M, K, step)]
+			for k in range(2):
+				for j in range(len(res[0])):
+					mean_func, stdev_func = res[k][j]
+					mean[k][j][i] = mean_func
+					stdev[k][j][i] = stdev_func
+		fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
+
+		for k in range(2):
+			for i in range(len(funcname_list)):
+				axs[k].errorbar(Kperc_list, mean[k][i], stdev[k][i], marker=markers[i])
+
+		titles = ['mice 75%, elephant 25%', 'mice 0%, elephant 100%']
+		for k in range(2):
+			ax = axs[k]
+			ax.set(xlabel='K/N', ylabel='Gain Fraction', xticks=Kperc_list, yticks=yticks, title=titles[k])
+			pos = ax.get_position()
+			ax.set_position([pos.x0, pos.y0, pos.width, pos.height * 0.95])
+			ax.grid()
+
+		## Wei: 修改图示位置
+		fig.legend(funcname_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
+			ncol=3, fancybox=True) #, shadow=True)
+		figurename = f'{foldername}/Kperc_N_{N}_M_{M}_step_{step}.eps'
+		plt.savefig(figurename, format='eps')
+		plt.clf()
+
 def Draw1(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
 	parent_folder = './EVALUATION/DATA.MICE.AND.ELEPHANT.1/'
 	N_list = [50, 100, 150, 200, 250]
@@ -270,8 +388,11 @@ def Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
 	parent_folder2 = './EVALUATION/DATA.MICE.AND.ELEPHANT.2/'
 
 	N_list = [50, 100, 150, 200, 250]
-	M_list = [10]
-	Kperc_list = [0.3]
+	M_list = [5, 10, 15, 20, 25, 30]
+	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
+
+	M_list = [5]
+	Kperc_list = [0.1]
 
 	args = [
 		(N, M, int(Kperc * N), 1.0)
@@ -300,13 +421,13 @@ def Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
 	res_dict2 = read_big_folder(parent_folder2)
 
 	if draw_N_flag:
-		draw_N_effect2([res_dict1, res_dict2], N_list)
+		draw_N_effect2([res_dict1, res_dict2], N_list, M_list, Kperc_list)
 
 	if draw_M_flag:
-		pass
+		draw_M_effect2([res_dict1, res_dict2], N_list, M_list, Kperc_list)
 
 	if draw_K_flag:
-		pass
+		draw_K_effect2([res_dict1, res_dict2], N_list, M_list, Kperc_list)
 
 if __name__ == '__main__':
 	funcname_list = [
