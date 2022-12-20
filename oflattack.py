@@ -712,6 +712,121 @@ def DynamicSequentialAttack_mod(sim_arg: tuple, K: int):
 
 	return pls, poisoned_list
 
+## Format Poisoned Pipelines
+def StandardFormat(config: dict, pls: list, poisoned_list: list) -> tuple:
+	N = config.get('N', 100)
+	M = config.get('M', 10)
+	K = config.get('K', 10)
+	step = dec(config.get('step', 1.0))
+
+	collect_point = {}
+	for pl_no in poisoned_list:
+		collect_point[pl_no] = set()
+	collect_ppl = -1
+
+	eps_U = [dec(0) for _ in range(M)]
+	dpfsys = dpf.DPF(float(step * N), N, M)
+	for ts in range(N):
+		if ts in poisoned_list:
+			collect_ppl = ts
+			# continue
+
+		dpfsys.AddToWaiting(pls[ts])
+		dpfsys.OnPipelineArrival(pls[ts])
+		for bid in range(M):
+			eps_U[bid] += step
+
+		sorted_pipelines = dpfsys.SortWaitingPipelines()
+		for pl_no in sorted_pipelines:
+			collect_bid = -1
+			canrunflag = True
+			for bid in range(M):
+				if eps_U[bid] < pls[ts][bid]:
+					collect_bid = bid
+					canrunflag = False
+					break
+			if canrunflag == False and collect_ppl != -1:
+				block_set: set = collect_point[collect_ppl]
+				block_set.add(collect_bid)
+			if canrunflag == True:
+				for bid in range(M):
+					eps_U[bid] -= pls[ts][bid]
+
+		complete = dpfsys.OnSchedulerTimer()
+
+	for item in collect_point.items():
+		print(item)
+
+	pppl = [dec(0) for _ in range(M)]
+	k1 = 0
+	for pl_no in poisoned_list:
+		k1 += 1
+		block_bids = collect_point[pl_no]
+		new_ppl = [alpha for _ in range(M)]
+		for bid in range(M):
+			pppl[bid] += pls[pl_no][bid]
+			if bid in block_bids:
+				new_ppl[bid] = pppl[bid]
+				pppl[bid] = dec(0)
+			else:
+				new_ppl[bid] = alpha
+				pppl[bid] -= alpha
+		if k1 == K:
+			for bid in range(M):
+				new_ppl[bid] += pppl[bid]
+		PrintPipeline(pls[pl_no])
+		pls[pl_no] = new_ppl
+
+	return pls, poisoned_list
+
+def StandardFormat2(config: dict, pls: list, poisoned_list: list) -> tuple:
+	N = config.get('N', 100)
+	M = config.get('M', 10)
+	K = config.get('K', 10)
+	step = dec(config.get('step', 1.0))
+	eps_Global = float(step * N)
+
+	ppl_format = {}
+	for pl_no in poisoned_list:
+		ppl_format[pl_no] = set()
+
+	dpfsys = dpf.DPF(eps_Global, N, M)
+	complete_order = []
+	for ts in range(N):
+		dpfsys.AddToWaiting(pls[ts])
+		dpfsys.OnPipelineArrival(pls[ts])
+		finished_pls = dpfsys.OnSchedulerTimer()
+		complete_order.append(finished_pls)
+
+	dpfsys = dpf.DPF(eps_Global, N, M)
+	dpfsys_former = dpfsys
+	former_ppl_no = -1
+	for ts in range(N):
+		pl = []
+		if ts in poisoned_list:
+			dpfsys_former = copy.deepcopy(dpfsys)
+			former_ppl_no = ts
+			pl = [alpha for _ in range(M)]
+		else:
+			pl = pls[ts]
+		eps_U = copy.deepcopy(dpfsys.eps_U)
+		for bid in range(M):
+			eps_U[bid] += step
+
+		sorted_pipelines = dpfsys.SortWaitingPipelines()
+
+		assert(len(pl) == M)
+		dpfsys.AddToWaiting(pl)
+		dpfsys.OnPipelineArrival(pl)
+		finished_pls = dpfsys.OnSchedulerTimer()
+		if former_ppl_no != -1:
+			for pl_no in finished_pls:
+				if pl_no not in complete_order[ts]:
+					dsid = pls[pl_no].index(max(pls[pl_no]))
+					ppl_format[former_ppl_no].add(dsid)
+
+	return pls, poisoned_list
+
 ## Run Functions
 def main_gen(config: dict, verbose=True) -> list:
 	N = config.get('N', 100)
@@ -732,11 +847,13 @@ def main_gen(config: dict, verbose=True) -> list:
 	if verbose and not read_flag:
 		PrintPipelines(benign_pls, list(range(N)))
 
-	def CallFunc(funcname, **kwargs) -> float:
+	def CallFunc(funcname, formatflag=False, **kwargs) -> float:
 		if not verbose:
 			print(ReturnFunctionName(funcname), kwargs)
 		start_time = time.time()
 		pls, poisoned_list = funcname(copy.deepcopy(sim_arg), K, **kwargs)
+		if formatflag == True:
+			pls, poisoned_list = StandardFormat(config, pls, poisoned_list)
 		duration = time.time() - start_time
 		sim_arg1 = (eps_Global, N, M, pls)
 		complete = dpf.Simulation(sim_arg1)
@@ -762,10 +879,12 @@ def main_gen(config: dict, verbose=True) -> list:
 		# CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
 		# CallFunc(RandomAttack),
 		# CallFunc(NaiveGreedy),
-		# CallFunc(BlockGreedy),
+		CallFunc(BlockGreedy),
+		# CallFunc(BlockGreedy, formatflag=True),
 		# CallFunc(DynamicSequentialAttack_std),
+		# CallFunc(DynamicSequentialAttack_std, formatflag=True),
 		# CallFunc(DynamicSequentialAttack_mod),
-		CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
+		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=2),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=4),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=K),
