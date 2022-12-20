@@ -94,8 +94,7 @@ def draw_N_effect(
 		plt.clf()
 
 def draw_N_effect2(
-	res_dict1,
-	res_dict2,
+	res_dicts: list,
 	N_list = [50, 100, 150, 200, 250],
 	M_list = [10],
 	Kperc_list = [0.3],
@@ -113,27 +112,36 @@ def draw_N_effect2(
 
 	for arg in args:
 		M, Kperc, step = arg
-		mean1 = [[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))]
-		stdev1 = [[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))]
-		mean2 = [[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))]
-		stdev2 = [[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))]
+		mean = [[[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))] for _ in range(2)]
+		stdev = [[[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))] for _ in range(2)]
 		for i in range(len(N_list)):
 			N = N_list[i]
-			res1 = res_dict1[(N, M, int(Kperc * N), step)]
-			res2 = res_dict2[(N, M, int(Kperc * N), step)]
-			for j in range(len(res1)):
-				mean_func, stdev_func = res1[j]
-				mean1[j][i] = mean_func
-				stdev1[j][i] = stdev_func
-			for j in range(len(res2)):
-				mean_func, stdev_func = res2[j]
-				mean2[j][i] = mean_func
-				stdev2[j][i] = stdev_func
-		fig, (ax1, ax2) = plt.subplot(1, 2, sharex=True, sharey=True)
-		for i in range(len(funcname_list)):
-			ax1.errorbar(N_list, mean1[i], stdev1[i], label=funcname_list[i], marker=markers[i])
-		for i in range(len(funcname_list)):
-			ax2.errorbar(N_list, mean2[i], stdev2[i], label=funcname_list[i], marker=markers[i])
+			res = [[], []]
+			res[0] = res_dicts[0][(N, M, int(Kperc * N), step)]
+			res[1] = res_dicts[1][(N, M, int(Kperc * N), step)]
+			for k in range(2):
+				for j in range(len(res[0])):
+					mean_func, stdev_func = res[k][j]
+					mean[k][j][i] = mean_func
+					stdev[k][j][i] = stdev_func
+		fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
+		for k in range(2):
+			for i in range(len(funcname_list)):
+				axs[k].errorbar(N_list, mean[k][i], stdev[k][i], label=funcname_list[i], marker=markers[i])
+		for ax in axs:
+			ax.set(xlabel='N', ylabel='Gain Fraction', xticks=N_list, yticks=yticks, title='yes')
+			pos = ax.get_position()
+			ax.set_position([pos.x0, pos.y0, pos.width, pos.height * 0.85])
+			ax.grid()
+		fig.legend(funcname_list, ncol=3, loc="upper center")
+		# plt.rc('font', size=10)          # controls default text sizes
+		# plt.rc('axes', titlesize=8)     # fontsize of the axes title
+		# plt.rc('axes', labelsize=8)     # fontsize of the x and y labels
+		# plt.rc('xtick', labelsize=8)    # fontsize of the tick labels
+		# plt.rc('ytick', labelsize=8)    # fontsize of the tick labels
+		# plt.rc('legend', fontsize=10)    # legend fontsize
+		# plt.rc('figure', titlesize=10)   # fontsize of the figure title
+		plt.tight_layout()
 		plt.show()
 
 def draw_M_effect(
@@ -262,8 +270,8 @@ def Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
 	parent_folder2 = './EVALUATION/DATA.MICE.AND.ELEPHANT.2/'
 
 	N_list = [50, 100, 150, 200, 250]
-	M_list = [5, 10, 15, 20, 25, 30]
-	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
+	M_list = [10]
+	Kperc_list = [0.3]
 
 	args = [
 		(N, M, int(Kperc * N), 1.0)
@@ -292,7 +300,7 @@ def Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
 	res_dict2 = read_big_folder(parent_folder2)
 
 	if draw_N_flag:
-		draw_N_effect2(res_dict1, res_dict2, N_list)
+		draw_N_effect2([res_dict1, res_dict2], N_list)
 
 	if draw_M_flag:
 		pass
@@ -301,14 +309,6 @@ def Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
 		pass
 
 if __name__ == '__main__':
-	plt.rc('font', size=10)          # controls default text sizes
-	plt.rc('axes', titlesize=10)     # fontsize of the axes title
-	plt.rc('axes', labelsize=18)     # fontsize of the x and y labels
-	plt.rc('xtick', labelsize=18)    # fontsize of the tick labels
-	plt.rc('ytick', labelsize=18)    # fontsize of the tick labels
-	plt.rc('legend', fontsize=10)    # legend fontsize
-	plt.rc('figure', titlesize=18)   # fontsize of the figure title
-
 	funcname_list = [
 		'RandomAttack',
 		'NaiveGreedy',
