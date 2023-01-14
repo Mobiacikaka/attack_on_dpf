@@ -420,6 +420,88 @@ def Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
 	if draw_K_flag:
 		draw_K_effect2([res_dict1, res_dict2], N_list, M_list, Kperc_list)
 
+def Draw_step():
+	parent_folder = './EVALUATION/DATA.FIXED.EPS_G/'
+	eps_Global = 120.0
+	N_list = [40, 60, 120, 160, 240]
+	# step_list = [3.0, 2.0, 1.0, 0.75, 0.5]
+	M_list = [10]
+	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
+	ratio_list = [0, 0.75]
+	exp_mice_list = [0.1, 0.2, 0.3, 0.4]
+
+	args = [
+		{
+			'N': N,
+			'M': M,
+			'K': int(Kperc * N),
+			'step': int(eps_Global/N),
+			'ratio': ratio,
+			'exp_mice': exp_mice,
+			'exp_elephant': 10 * exp_mice
+		}
+		for N in N_list
+		for M in M_list
+		for Kperc in Kperc_list
+		for ratio in ratio_list
+		for exp_mice in exp_mice_list
+	]
+
+	res_dict = {}
+	for arg in args:
+		foldername = parent_folder
+		for name, value in arg.items():
+			foldername += f'{name}_{value}_'
+		print(foldername)
+		res_hundredtimes = read_folder(foldername)
+		y = []
+		for i in range(len(funcname_list)):
+			mean = statistics.mean(res_hundredtimes[i])
+			stdev = statistics.stdev(res_hundredtimes[i])
+			y.append((mean, stdev))
+		res_dict[arg] = y
+
+	def __draw():
+		foldername = parent_folder + 'images'
+		subprocess.run(['mkdir', '-p', foldername])
+
+		args = [
+			(M, Kperc, ratio, exp_mice, 10 * exp_mice)
+			for M in M_list
+			for Kperc in Kperc_list
+			for ratio in ratio_list
+			for exp_mice in exp_mice_list
+		]
+
+		for arg in args:
+			M, Kperc, ratio, exp_mice, exp_elephant = arg
+			res = []
+			mean = [[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))]
+			stdev = [[0 for _ in range(len(N_list))] for _ in range(len(funcname_list))]
+			for i in range(len(N_list)):
+				N = N_list[i]
+				res = res_dict[
+					(N, M, int(Kperc * N), eps_Global / N, ratio, exp_mice, exp_elephant)
+				]
+				for j in range(len(res)):
+					mean_func, stdev_func = res[j]
+					mean[j][i] = mean_func
+					stdev[j][i] = stdev_func
+			for i in range(len(funcname_list)):
+				plt.errorbar(N_list, mean[i], stdev[i], label=funcname_list[i], marker=markers[i])
+			plt.xlabel('N')
+			plt.ylabel('Gain Fraction')
+			plt.xticks(N_list)
+			plt.yticks(yticks)
+			plt.legend(fontsize='medium')
+			figurename = f'{foldername}/M_{M}_Kperc_{Kperc}_ratio_{ratio}.eps'
+			plt.tight_layout()
+			plt.grid()
+			plt.savefig(figurename, format='eps')
+			plt.clf()
+
+	__draw()
+
 if __name__ == '__main__':
 	funcname_list = [
 		'RandomAttack',
@@ -432,4 +514,5 @@ if __name__ == '__main__':
 	yticks = np.arange(0, 1.1, 0.1)
 
 	# Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
-	Draw2(draw_N_flag=True, draw_M_flag=False, draw_K_flag=False)
+	# Draw2(draw_N_flag=True, draw_M_flag=False, draw_K_flag=False)
+	Draw_step()
