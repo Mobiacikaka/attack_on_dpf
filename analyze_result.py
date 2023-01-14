@@ -431,7 +431,7 @@ def Draw_step():
 	exp_mice_list = [0.1, 0.2, 0.3, 0.4]
 
 	args = [
-		[N, M, int(Kperc * N), eps_Global / N, ratio, exp_mice, 10 * exp_mice]
+		(N, M, int(Kperc * N), eps_Global / N, ratio, exp_mice, 10 * exp_mice)
 		for N in N_list
 		for M in M_list
 		for Kperc in Kperc_list
@@ -480,7 +480,7 @@ def Draw_step():
 					mean[j][i] = mean_func
 					stdev[j][i] = stdev_func
 			for i in range(len(funcname_list)):
-				plt.errorbar(N_list, mean[i], stdev[i], label=funcname_list[i], marker=markers[i])
+				plt.plot(N_list, mean[i], label=funcname_list[i], marker=markers[i])
 			plt.xlabel('N')
 			plt.ylabel('Gain Fraction')
 			plt.xticks(N_list)
