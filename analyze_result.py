@@ -431,15 +431,7 @@ def Draw_step():
 	exp_mice_list = [0.1, 0.2, 0.3, 0.4]
 
 	args = [
-		{
-			'N': N,
-			'M': M,
-			'K': int(Kperc * N),
-			'step': int(eps_Global/N),
-			'ratio': ratio,
-			'exp_mice': exp_mice,
-			'exp_elephant': 10 * exp_mice
-		}
+		[N, M, int(Kperc * N), eps_Global / N, ratio, exp_mice, 10 * exp_mice]
 		for N in N_list
 		for M in M_list
 		for Kperc in Kperc_list
@@ -449,9 +441,9 @@ def Draw_step():
 
 	res_dict = {}
 	for arg in args:
-		foldername = parent_folder
-		for name, value in arg.items():
-			foldername += f'{name}_{value}_'
+		N, M, K, step, ratio, exp_mice, exp_elephant = arg
+		foldername = parent_folder + \
+			f'N_{N}_M_{M}_K_{K}_step_{step}_ratio_{ratio}_exp_mice_{exp_mice}_exp_elephant_{exp_elephant}_'
 		print(foldername)
 		res_hundredtimes = read_folder(foldername)
 		y = []
