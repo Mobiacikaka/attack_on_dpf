@@ -24,35 +24,29 @@ def read_folder(foldername):
 	for _ in range(len(funcname_list)):
 		res_hundredtimes.append([])
 	print(foldername)
-	for times in range(100):
-		res_onetime = read_onetime(foldername, times)
-		for i in range(len(funcname_list)):
-			try:
-				res_hundredtimes[i].append(res_onetime[i])
-			except:
-				print("error", foldername, times)
-				exit(0)
+	resfilename = f'{foldername}/totalresult'
+	if os.path.exists(resfilename):
+		resfile = open(resfilename, 'r')
+		for times in range(100):
+			line = resfile.readline()
+			res_onetime = line.split('\t')[:-1]
+			for i in range(len(funcname_list)):
+				res_hundredtimes[i].append(float(res_onetime[i]))
+		resfile.close()
+	else:
+		resfile = open(resfilename, 'w')
+		for times in range(100):
+			res_onetime = read_onetime(foldername, times)
+			for i in range(len(funcname_list)):
+				try:
+					res_hundredtimes[i].append(res_onetime[i])
+					resfile.write(str(res_onetime[i]) + '\t')
+				except:
+					print("error", foldername, times)
+					exit(0)
+			resfile.write('\n')
+		resfile.close()
 	return res_hundredtimes
-
-	args = [
-		(sigma, N, M, int(Kperc * N), step)
-		for sigma in sigma_list
-		for N in N_list
-		for M in M_list
-		for Kperc in Kperc_list
-		for step in step_list
-	]
-
-	res_dict = {}
-	for folderargs in args:
-		y = []
-		res_hundredtimes = read_folder(folderargs, datafolder)
-		for i in range(len(res_hundredtimes)):
-			y.append(statistics.mean(res_hundredtimes[i]))
-		res_dict[folderargs] = y
-
-	for item in res_dict.items():
-		print(item)
 
 def draw_N_effect(
 	res_dict,
@@ -108,7 +102,7 @@ def draw_N_effect2(
 	subprocess.run(['mkdir', '-p', foldername])
 
 	## Wei: 修改图的大小
-	plt.rcParams["figure.figsize"] = 10, 6
+	plt.rcParams["figure.figsize"] = 11, 5
 
 	args = [
 		(M, Kperc, step)
@@ -147,7 +141,7 @@ def draw_N_effect2(
 
 		## Wei: 修改图示位置
 		fig.legend(funcname_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
-			ncol=3, fancybox=True) #, shadow=True)
+			ncol=3, fancybox=True, fontsize='medium') #, shadow=True)
 		figurename = f'{foldername}/N_M_{M}_Kperc_{Kperc}_step_{step}.eps'
 		plt.savefig(figurename, format='eps')
 		plt.clf()
@@ -206,7 +200,7 @@ def draw_M_effect2(
 	subprocess.run(['mkdir', '-p', foldername])
 
 	## Wei: 修改图的大小
-	plt.rcParams["figure.figsize"] = 10, 6
+	plt.rcParams["figure.figsize"] = 11, 5
 
 	args = [
 		(N, Kperc, step)
@@ -245,7 +239,7 @@ def draw_M_effect2(
 
 		## Wei: 修改图示位置
 		fig.legend(funcname_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
-			ncol=3, fancybox=True) #, shadow=True)
+			ncol=3, fancybox=True, fontsize='medium') #, shadow=True)
 		figurename = f'{foldername}/M_N_{N}_Kperc_{Kperc}_step_{step}.eps'
 		plt.savefig(figurename, format='eps')
 		plt.clf()
@@ -304,7 +298,7 @@ def draw_K_effect2(
 	subprocess.run(['mkdir', '-p', foldername])
 
 	## Wei: 修改图的大小
-	plt.rcParams["figure.figsize"] = 10, 6
+	plt.rcParams["figure.figsize"] = 11, 5
 
 	args = [
 		(N, M, step)
@@ -343,7 +337,7 @@ def draw_K_effect2(
 
 		## Wei: 修改图示位置
 		fig.legend(funcname_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
-			ncol=3, fancybox=True) #, shadow=True)
+			ncol=3, fancybox=True, fontsize='medium') #, shadow=True)
 		figurename = f'{foldername}/Kperc_N_{N}_M_{M}_step_{step}.eps'
 		plt.savefig(figurename, format='eps')
 		plt.clf()
@@ -391,9 +385,6 @@ def Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True):
 	M_list = [5, 10, 15, 20, 25, 30]
 	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
 
-	M_list = [5]
-	Kperc_list = [0.1]
-
 	args = [
 		(N, M, int(Kperc * N), 1.0)
 		for N in N_list
@@ -440,5 +431,5 @@ if __name__ == '__main__':
 	markers = ['o', 'v', 'P', 's', 'p']
 	yticks = np.arange(0, 1.1, 0.1)
 
-	# Draw1(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
-	Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
+	# Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
+	Draw2(draw_N_flag=True, draw_M_flag=False, draw_K_flag=False)

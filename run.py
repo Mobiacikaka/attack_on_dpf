@@ -62,7 +62,7 @@ def onerun(config: dict, time, read_flag):
 
 	subprocess.run(['mkdir', '-p', f'EVALUATION/{foldername}/'])
 	output = subprocess.Popen(
-		['python', 'oflattack.py'], 
+		['python', 'oflattack.py'],
 		stdin=subprocess.PIPE,
 		stdout=subprocess.PIPE,
 		stderr=subprocess.STDOUT,
@@ -84,15 +84,28 @@ def run_fixed_epsG():
 	eps_G = 120
 	N_list = [240, 160, 120, 60, 40]
 	#step =  [0.5, 0.75, 1,  2,  3]
+	ratio_list = [0, 0.75]
+	exp_elephant_list = [1.0, 2.0, 3.0, 4.0]
+
 	global parent_dir
-	parent_dir = 'DATA.FIXED_EPSG/'
+	parent_dir = 'DATA.FIXED.ESP_G/'
 
 	args = [
-		(N, M, int(Kperc * N), eps_G / N, time)
+		({
+			'N': N,
+			'M': M,
+			'K': int(Kperc * N),
+			'step': float(eps_G / N),
+			'ratio': ratio,
+			'exp_mice': exp_elephant/10,
+			'exp_elephant': exp_elephant,
+		}, time, False)
 		for N in N_list
 		for M in M_list
 		for Kperc in Kperc_list
 		for time in range(times // multitimes)
+		for ratio in ratio_list
+		for exp_elephant in exp_elephant_list
 	]
 
 	pool = multiprocessing.Pool(multiprocessing.cpu_count())
@@ -130,4 +143,4 @@ def run_single_param():
 	pool.join()
 
 if __name__ == '__main__':
-	run_single_param()
+	run_fixed_epsG()
