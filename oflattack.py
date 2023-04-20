@@ -943,14 +943,15 @@ def main_gen(config: dict, verbose=True) -> list:
 
 	return [
 		# CallFunc(GreedyTheRecalculation),
+		# CallFunc(BRA),
 		# CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
 		CallFunc(RandomAttack),
-		CallFunc(NaiveGreedy),
-		CallFunc(BlockGreedy),
+		# CallFunc(NaiveGreedy),
+		# CallFunc(BlockGreedy),
 		# CallFunc(BlockGreedy, formatflag=True),
 		CallFunc(DynamicSequentialAttack_std),
 		# CallFunc(DynamicSequentialAttack_std, formatflag=True),
-		CallFunc(DynamicSequentialAttack_mod),
+		# CallFunc(DynamicSequentialAttack_mod),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=2),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=4),

@@ -79,7 +79,7 @@ def draw_N_effect(
 				mean[j][i] = mean_func
 				stdev[j][i] = stdev_func
 		for i in range(len(funcname_list)):
-			plt.errorbar(N_list, mean[i], stdev[i], label=funcname_list[i], marker=markers[i])
+			plt.errorbar(N_list, mean[i], stdev[i], label=method_list[i], marker=markers[i])
 		plt.xlabel('N')
 		plt.ylabel('Gain Fraction')
 		plt.xticks(N_list)
@@ -177,7 +177,7 @@ def draw_M_effect(
 				mean[j][i] = mean_func
 				stdev[j][i] = stdev_func
 		for i in range(len(funcname_list)):
-			plt.errorbar(M_list, mean[i], stdev[i], label=funcname_list[i], marker=markers[i])
+			plt.errorbar(M_list, mean[i], stdev[i], label=method_list[i], marker=markers[i])
 		plt.xlabel('M')
 		plt.ylabel('Gain Fraction')
 		plt.xticks(M_list)
@@ -275,7 +275,7 @@ def draw_K_effect(
 				mean[j][i] = mean_func
 				stdev[j][i] = stdev_func
 		for i in range(len(funcname_list)):
-			plt.errorbar(Kperc_list, mean[i], stdev[i], label=funcname_list[i], marker=markers[i])
+			plt.errorbar(Kperc_list, mean[i], stdev[i], label=method_list[i], marker=markers[i])
 		plt.xlabel('K/N')
 		plt.ylabel('Gain Fraction')
 		plt.xticks(Kperc_list)
@@ -480,7 +480,7 @@ def Draw_step():
 					mean[j][i] = mean_func
 					stdev[j][i] = stdev_func
 			for i in range(len(funcname_list)):
-				plt.plot(N_list, mean[i], label=funcname_list[i], marker=markers[i])
+				plt.plot(N_list, mean[i], label=method_list[i], marker=markers[i])
 			plt.xlabel('N')
 			plt.ylabel('Gain Fraction')
 			plt.xticks(N_list)
