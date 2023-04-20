@@ -502,6 +502,13 @@ if __name__ == '__main__':
 		'DynamicSequentialAttack_std',
 		'DynamicSequentialAttack_mod',
 	]
+	method_list = [
+		'Random Attack',
+		'Naive Greedy',
+		'Block Greedy',
+		'DSA 1',
+		'DSA 2',
+	]
 	markers = ['o', 'v', 'P', 's', 'p']
 	yticks = np.arange(0, 1.1, 0.1)
 

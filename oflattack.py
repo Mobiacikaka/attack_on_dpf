@@ -435,6 +435,73 @@ def GreedyFramework(sim_arg: tuple, K: int, method='__Tree_MaxEveryDepth', **kwa
 
 	return pls, poisoned_list
 
+# Budget Recalculation Attack
+def BRA(sim_arg: tuple, K: int):
+	eps_Global, N, NPB, pls = sim_arg
+	assert(len(pls) + K >= N)
+
+	poisoned_list = []
+	k1 = 0
+	k2 = K
+	while k2 > 0:
+		new_poisoned_list = []
+		new_sum = 0
+		for insert_ts in range(N-K+1):
+			if insert_ts in poisoned_list:
+				continue
+
+			## generate insertion list
+			tmp_poisoned_list = copy.deepcopy(poisoned_list)
+			tmp_poisoned_list.append(insert_ts)
+			tmp_poisoned_list.sort()
+
+			## greedy on each position
+			tmp_sum = 0
+			dpfsys = dpf.DPF(eps_Global, N, NPB)
+			for i in range(N-K+1):
+				if i in tmp_poisoned_list:
+					tmp_poisoned_pl = MaximizeAllocationAtTS(dpfsys)
+					tmp_sum += sum(tmp_poisoned_pl)
+					dpfsys.AddToWaiting(tmp_poisoned_pl)
+					dpfsys.OnPipelineArrival(tmp_poisoned_pl)
+					dpfsys.OnSchedulerTimer()
+				if i >= N-K:
+					break
+				dpfsys.AddToWaiting(pls[i])
+				dpfsys.OnPipelineArrival(pls[i])
+				dpfsys.OnSchedulerTimer()
+
+			if tmp_sum > new_sum:
+				new_sum = tmp_sum
+				new_poisoned_list = tmp_poisoned_list
+
+		## len(poisoned_list) += 1
+		poisoned_list = new_poisoned_list
+		# print(poisoned_list)
+		k1 += 1
+		k2 -= 1
+
+	assert(len(poisoned_list) == K)
+	k1 = 0
+	for i in range(K):
+		poisoned_list[i] += k1
+		k1 += 1
+
+	k1 = 0
+	k2 = K
+	dpfsys = dpf.DPF(eps_Global, N, NPB)
+	for i in range(N):
+		if i in poisoned_list:
+			poisoned_pl = MaximizeAllocationAtTS(dpfsys)
+			pls.insert(i, poisoned_pl)
+		dpfsys.AddToWaiting(pls[i])
+		dpfsys.OnPipelineArrival(pls[i])
+		finished_pls_seq = dpfsys.OnSchedulerTimer()
+		if i in poisoned_list:
+			assert(i in finished_pls_seq)
+
+	return pls, poisoned_list
+
 def GreedyTheRecalculation(sim_arg: tuple, K: int):
 	eps_Global, N, M, pls = sim_arg
 	assert(len(pls) + K >= N)

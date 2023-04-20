@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 # vim:ts=2:sw=2:noet
 from decimal import Decimal as dec
+import random
 
-dec_format = '%.2f'
+dec_format = '%.1f'
 
 class DPF:
 	def __init__(self, eps_Global: float, N: int, M: int):
@@ -62,6 +63,45 @@ class DPF:
 						self.eps_U[j] += d_i[j]
 						self.eps_A[j] -= d_i[j]
 			i += 1
+		self.timestamp += 1
+		return finished
+
+	def rndOnSchedulerTimer(self) -> list:
+		finished = []
+		while True:
+			canrunlist = []
+			dslist = []
+			sorted_pipelines = self.SortWaitingPipelines()
+			for i in range(len(sorted_pipelines)):
+				seq = sorted_pipelines[i]
+				d_i = self.wp.get(seq)
+				assert(d_i != None)
+				if self.CanRun(d_i):
+					canrunlist.append(seq)
+					dslist.append(float(self.DominantShare(d_i)))
+			if len(canrunlist) == 0:
+				break
+			## generate probabilistic distribution
+			distribution = tuple(dslist)
+			## choose from distribution
+			seq = random.choices(canrunlist, cum_weights=distribution, k=1)[0]
+			d_i = self.wp.get(seq)
+			assert(d_i != None)
+			if(self.CanRun(d_i)):
+				self.Allocate(d_i)
+				task_complete_flag = True
+				if task_complete_flag == True:
+					for j in range(self.M):
+						self.eps_C[j] += d_i[j]
+						self.eps_A[j] -= d_i[j]
+					assert(seq not in self.complete_pl_list)
+					self.wp.pop(seq)
+					self.complete_pl_list.append(seq)
+					finished.append(seq)
+				else:
+					for j in range(self.M):
+						self.eps_U[j] += d_i[j]
+						self.eps_A[j] -= d_i[j]
 		self.timestamp += 1
 		return finished
 
