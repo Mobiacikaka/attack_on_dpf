@@ -5,18 +5,17 @@ import statistics
 from matplotlib import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import os
-
-mpl.rcParams['pdf.fonttype'] = 42
-mpl.rcParams['ps.fonttype'] = 42
 
 def read_onetime(foldername, times) -> list:
 	res = []
 	for funcname in funcname_list:
 		file = open(f'{foldername}/{times}.{funcname}.txt')
 		lines = file.readlines()
-		res.append(float(lines[1].replace('\n', '')))
+		a = float(lines[readitem].replace('\n', ''))
+		if readtime == True:
+			a = np.log10(a)
+		res.append(a)
 	return res
 
 def read_folder(foldername):
@@ -24,7 +23,11 @@ def read_folder(foldername):
 	for _ in range(len(funcname_list)):
 		res_hundredtimes.append([])
 	print(foldername)
-	resfilename = f'{foldername}/totalresult'
+	resfilename = f'{foldername}/'
+	if readtime == True:
+		resfilename += 'totalresult_time'
+	else:
+		resfilename += 'totalresult'
 	if os.path.exists(resfilename):
 		resfile = open(resfilename, 'r')
 		for times in range(100):
@@ -56,7 +59,7 @@ def draw_N_effect(
 	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5],
 	step_list = [1.0],
 ):
-	foldername = parent_folder + 'images'
+	foldername = parent_folder + imagefolder
 	subprocess.run(['mkdir', '-p', foldername])
 
 	args = [
@@ -81,7 +84,7 @@ def draw_N_effect(
 		for i in range(len(funcname_list)):
 			plt.errorbar(N_list, mean[i], stdev[i], label=method_list[i], marker=markers[i])
 		plt.xlabel('N')
-		plt.ylabel('Gain Fraction')
+		plt.ylabel(Ylabel)
 		plt.xticks(N_list)
 		plt.yticks(yticks)
 		plt.legend(fontsize='medium')
@@ -98,7 +101,7 @@ def draw_N_effect2(
 	Kperc_list = [0.3],
 	step_list = [1.0],
 ):
-	foldername = 'EVALUATION/images'
+	foldername = 'EVALUATION/' + imagefolder
 	subprocess.run(['mkdir', '-p', foldername])
 
 	## Wei: 修改图的大小
@@ -128,19 +131,20 @@ def draw_N_effect2(
 		fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
 
 		for k in range(2):
+			assert(len(funcname_list) == len(mean[k]))
 			for i in range(len(funcname_list)):
 				axs[k].errorbar(N_list, mean[k][i], stdev[k][i], marker=markers[i])
 
 		titles = ['mice 75%, elephant 25%', 'mice 0%, elephant 100%']
 		for k in range(2):
 			ax = axs[k]
-			ax.set(xlabel='N', ylabel='Gain Fraction', xticks=N_list, yticks=yticks, title=titles[k])
+			ax.set(xlabel='N', ylabel=Ylabel, xticks=N_list, yticks=yticks, title=titles[k])
 			pos = ax.get_position()
 			ax.set_position([pos.x0, pos.y0, pos.width, pos.height * 0.95])
 			ax.grid()
 
 		## Wei: 修改图示位置
-		fig.legend(funcname_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
+		fig.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
 			ncol=3, fancybox=True, fontsize='medium') #, shadow=True)
 		figurename = f'{foldername}/N_M_{M}_Kperc_{Kperc}_step_{step}.eps'
 		plt.savefig(figurename, format='eps')
@@ -154,7 +158,7 @@ def draw_M_effect(
 	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5],
 	step_list = [1.0],
 ):
-	foldername = parent_folder + 'images'
+	foldername = parent_folder + imagefolder
 	subprocess.run(['mkdir', '-p', foldername])
 
 	args = [
@@ -179,7 +183,7 @@ def draw_M_effect(
 		for i in range(len(funcname_list)):
 			plt.errorbar(M_list, mean[i], stdev[i], label=method_list[i], marker=markers[i])
 		plt.xlabel('M')
-		plt.ylabel('Gain Fraction')
+		plt.ylabel(Ylabel)
 		plt.xticks(M_list)
 		plt.yticks(yticks)
 		plt.legend(fontsize='medium')
@@ -196,7 +200,7 @@ def draw_M_effect2(
 	Kperc_list = [0.3],
 	step_list = [1.0],
 ):
-	foldername = 'EVALUATION/images'
+	foldername = 'EVALUATION/' + imagefolder
 	subprocess.run(['mkdir', '-p', foldername])
 
 	## Wei: 修改图的大小
@@ -226,19 +230,20 @@ def draw_M_effect2(
 		fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
 
 		for k in range(2):
+			assert(len(funcname_list) == len(mean[k]))
 			for i in range(len(funcname_list)):
 				axs[k].errorbar(M_list, mean[k][i], stdev[k][i], marker=markers[i])
 
 		titles = ['mice 75%, elephant 25%', 'mice 0%, elephant 100%']
 		for k in range(2):
 			ax = axs[k]
-			ax.set(xlabel='M', ylabel='Gain Fraction', xticks=M_list, yticks=yticks, title=titles[k])
+			ax.set(xlabel='M', ylabel=Ylabel, xticks=M_list, yticks=yticks, title=titles[k])
 			pos = ax.get_position()
 			ax.set_position([pos.x0, pos.y0, pos.width, pos.height * 0.95])
 			ax.grid()
 
 		## Wei: 修改图示位置
-		fig.legend(funcname_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
+		fig.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
 			ncol=3, fancybox=True, fontsize='medium') #, shadow=True)
 		figurename = f'{foldername}/M_N_{N}_Kperc_{Kperc}_step_{step}.eps'
 		plt.savefig(figurename, format='eps')
@@ -252,7 +257,7 @@ def draw_K_effect(
 	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5],
 	step_list = [1.0],
 ):
-	foldername = parent_folder + 'images'
+	foldername = parent_folder + imagefolder
 	subprocess.run(['mkdir', '-p', foldername])
 
 	args = [
@@ -277,7 +282,7 @@ def draw_K_effect(
 		for i in range(len(funcname_list)):
 			plt.errorbar(Kperc_list, mean[i], stdev[i], label=method_list[i], marker=markers[i])
 		plt.xlabel('K/N')
-		plt.ylabel('Gain Fraction')
+		plt.ylabel(Ylabel)
 		plt.xticks(Kperc_list)
 		plt.yticks(yticks)
 		plt.legend(fontsize='medium')
@@ -294,7 +299,7 @@ def draw_K_effect2(
 	Kperc_list = [0.3],
 	step_list = [1.0],
 ):
-	foldername = 'EVALUATION/images'
+	foldername = 'EVALUATION/' + imagefolder
 	subprocess.run(['mkdir', '-p', foldername])
 
 	## Wei: 修改图的大小
@@ -330,13 +335,13 @@ def draw_K_effect2(
 		titles = ['mice 75%, elephant 25%', 'mice 0%, elephant 100%']
 		for k in range(2):
 			ax = axs[k]
-			ax.set(xlabel='K/N', ylabel='Gain Fraction', xticks=Kperc_list, yticks=yticks, title=titles[k])
+			ax.set(xlabel='K/N', ylabel=Ylabel, xticks=Kperc_list, yticks=yticks, title=titles[k])
 			pos = ax.get_position()
 			ax.set_position([pos.x0, pos.y0, pos.width, pos.height * 0.95])
 			ax.grid()
 
 		## Wei: 修改图示位置
-		fig.legend(funcname_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
+		fig.legend(legend_list, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
 			ncol=3, fancybox=True, fontsize='medium') #, shadow=True)
 		figurename = f'{foldername}/Kperc_N_{N}_M_{M}_step_{step}.eps'
 		plt.savefig(figurename, format='eps')
@@ -480,13 +485,17 @@ def Draw_step():
 					mean[j][i] = mean_func
 					stdev[j][i] = stdev_func
 			for i in range(len(funcname_list)):
+<<<<<<< HEAD
+				plt.plot(N_list, mean[i], label=legend_list[i], marker=markers[i])
+=======
 				plt.plot(N_list, mean[i], label=method_list[i], marker=markers[i])
+>>>>>>> 5b507fde97305bba9018f1a02eea37ebf0e04aba
 			plt.xlabel('N')
 			plt.ylabel('Gain Fraction')
 			plt.xticks(N_list)
 			plt.yticks(yticks)
 			plt.legend(fontsize='medium')
-			figurename = f'{foldername}/M_{M}_Kperc_{Kperc}_ratio_{ratio}.eps'
+			figurename = f'{foldername}/M_{M}_Kperc_{Kperc}_ratio_{ratio}_exp_mice_{exp_mice}_exp_elephant_{exp_elephant}.eps'
 			plt.tight_layout()
 			plt.grid()
 			plt.savefig(figurename, format='eps')
@@ -501,7 +510,26 @@ if __name__ == '__main__':
 		'BlockGreedy',
 		'DynamicSequentialAttack_std',
 		'DynamicSequentialAttack_mod',
+		'GreedyTheRecalculation',
 	]
+
+	legend_list = [
+		'Random Attack',
+		'Naive Greedy',
+		'Window-wised',
+		'DSA+f1',
+		'DSA+f2',
+		'BRA',
+	]
+	markers = ['o', 'v', 'P', 's', 'p', '*']
+
+	plt.rcParams['pdf.fonttype'] = 42
+	plt.rcParams['ps.fonttype'] = 42
+	readtime = False
+	readitem = 1
+	imagefolder = 'images'
+	Ylabel = 'Gain Fraction'
+
 	method_list = [
 		'Random Attack',
 		'Naive Greedy',
@@ -509,9 +537,15 @@ if __name__ == '__main__':
 		'DSA 1',
 		'DSA 2',
 	]
-	markers = ['o', 'v', 'P', 's', 'p']
 	yticks = np.arange(0, 1.1, 0.1)
 
-	# Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
-	# Draw2(draw_N_flag=True, draw_M_flag=False, draw_K_flag=False)
-	Draw_step()
+	if readtime == True:
+		Ylabel = 'Time Consumed (log10)'
+		imagefolder = 'images_time'
+		readitem = 2
+		yticks = [0.001, 0.01, 0.1, 1, 10, 100]
+		yticks = [np.log10(a) for a in yticks]
+
+	# Draw1(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
+	Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
+	# Draw_step()
