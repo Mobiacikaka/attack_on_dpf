@@ -72,7 +72,12 @@ def onerun(config: dict, time, read_flag):
 	output = output.communicate(input=param.encode())[0]
 	output = output.decode('utf-8')
 	output = output.split('\n')[:-1]
-	cut(output, foldername, time, config, read_flag)
+	debug = True
+	if not debug:
+		cut(output, foldername, time, config, read_flag)
+	else:
+		for line in output:
+			print(line)
 
 def multirun(config, time, read_flag):
 	for i in range(multitimes):
@@ -123,13 +128,19 @@ def run_single_param():
 	times = 100
 	read_flag = True
 
+	N_list = [5]
+	M_list = [5]
+	Kperc_list = [0.4]
+	times = 1
+	multitimes = 1
+
 	args = [
 		({
 			'N': N,
 			'M': M,
 			'K': int(Kperc * N),
 			'step': step,
-			'ratio': 0,
+			'ratio': 0,	# 0 means no mice
 			'exp_mice': 0.1,
 			'exp_elephant': 1.0,
 		}, time, read_flag)

@@ -82,7 +82,7 @@ def draw_N_effect(
 				mean[j][i] = mean_func
 				stdev[j][i] = stdev_func
 		for i in range(len(funcname_list)):
-			plt.errorbar(N_list, mean[i], stdev[i], label=funcname_list[i], marker=markers[i])
+			plt.errorbar(N_list, mean[i], stdev[i], label=method_list[i], marker=markers[i])
 		plt.xlabel('N')
 		plt.ylabel(Ylabel)
 		plt.xticks(N_list)
@@ -181,7 +181,7 @@ def draw_M_effect(
 				mean[j][i] = mean_func
 				stdev[j][i] = stdev_func
 		for i in range(len(funcname_list)):
-			plt.errorbar(M_list, mean[i], stdev[i], label=funcname_list[i], marker=markers[i])
+			plt.errorbar(M_list, mean[i], stdev[i], label=method_list[i], marker=markers[i])
 		plt.xlabel('M')
 		plt.ylabel(Ylabel)
 		plt.xticks(M_list)
@@ -280,7 +280,7 @@ def draw_K_effect(
 				mean[j][i] = mean_func
 				stdev[j][i] = stdev_func
 		for i in range(len(funcname_list)):
-			plt.errorbar(Kperc_list, mean[i], stdev[i], label=funcname_list[i], marker=markers[i])
+			plt.errorbar(Kperc_list, mean[i], stdev[i], label=method_list[i], marker=markers[i])
 		plt.xlabel('K/N')
 		plt.ylabel(Ylabel)
 		plt.xticks(Kperc_list)
@@ -485,7 +485,11 @@ def Draw_step():
 					mean[j][i] = mean_func
 					stdev[j][i] = stdev_func
 			for i in range(len(funcname_list)):
+<<<<<<< HEAD
 				plt.plot(N_list, mean[i], label=legend_list[i], marker=markers[i])
+=======
+				plt.plot(N_list, mean[i], label=method_list[i], marker=markers[i])
+>>>>>>> 5b507fde97305bba9018f1a02eea37ebf0e04aba
 			plt.xlabel('N')
 			plt.ylabel('Gain Fraction')
 			plt.xticks(N_list)
@@ -508,6 +512,7 @@ if __name__ == '__main__':
 		'DynamicSequentialAttack_mod',
 		'GreedyTheRecalculation',
 	]
+
 	legend_list = [
 		'Random Attack',
 		'Naive Greedy',
@@ -524,6 +529,14 @@ if __name__ == '__main__':
 	readitem = 1
 	imagefolder = 'images'
 	Ylabel = 'Gain Fraction'
+
+	method_list = [
+		'Random Attack',
+		'Naive Greedy',
+		'Block Greedy',
+		'DSA 1',
+		'DSA 2',
+	]
 	yticks = np.arange(0, 1.1, 0.1)
 
 	if readtime == True:

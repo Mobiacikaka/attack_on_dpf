@@ -3,7 +3,7 @@
 from decimal import Decimal as dec
 import random
 
-dec_format = '%.2f'
+dec_format = '%.1f'
 
 class DPF:
 	def __init__(self, eps_Global: float, N: int, M: int):
