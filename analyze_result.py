@@ -534,5 +534,5 @@ if __name__ == '__main__':
 		yticks = [np.log10(a) for a in yticks]
 
 	# Draw1(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
-	# Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
-	Draw_step()
+	Draw2(draw_N_flag=True, draw_M_flag=True, draw_K_flag=True)
+	# Draw_step()

@@ -179,6 +179,44 @@ def NaiveGreedy(sim_arg: tuple, K: int):
 		k2 -= 1
 	return pls, poisoned_list
 
+def BruteForce(sim_arg: tuple, K: int):
+	eps_Global, N, M, pls = sim_arg
+	assert(N >= K and K == 2)
+
+	poisoned_list = []
+	poisoned_pl_list = []
+	maximum_gain = 0
+	for ts1 in range(N):
+		for ts2 in range(ts1+1, N):
+			# search every possible list
+			dpfsys = dpf.DPF(eps_Global, N, M)
+
+			# Maximize poisoned pipeline ts1
+			for ts in range(ts1):
+				dpfsys.AddToWaiting(pls[ts])
+				dpfsys.OnPipelineArrival(pls[ts])
+				dpfsys.OnSchedulerTimer()
+
+			poisoned_pl_ts1 = MaximizeAllocationAtTS(dpfsys)
+			dpfsys.AddToWaiting(poisoned_pl_ts1)
+			dpfsys.OnPipelineArrival(poisoned_pl_ts1)
+			dpfsys.OnSchedulerTimer()
+
+			for ts in range(ts1, ts2-1):
+				dpfsys.AddToWaiting(pls[ts])
+				dpfsys.OnPipelineArrival(pls[ts])
+				dpfsys.OnSchedulerTimer()
+
+			poisoned_pl_ts2 = MaximizeAllocationAtTS(dpfsys)
+			if sum(poisoned_pl_ts1) + sum(poisoned_pl_ts2) > maximum_gain:
+				maximum_gain = sum(poisoned_pl_ts1) + sum(poisoned_pl_ts2)
+				poisoned_list = [ts1, ts2]
+				poisoned_pl_list = [poisoned_pl_ts1, poisoned_pl_ts2]
+
+	pls.insert(poisoned_list[0], poisoned_pl_list[0])
+	pls.insert(poisoned_list[1], poisoned_pl_list[1])
+	return pls, poisoned_list
+
 def GreedyFramework(sim_arg: tuple, K: int, method='__Tree_MaxEveryDepth', **kwargs):
 	eps_Global, N, M, pls = sim_arg
 	assert(len(pls) + K >= N)
@@ -469,10 +507,10 @@ def GreedyTheRecalculation(sim_arg: tuple, K: int):
 
 			if tmp_sum > new_sum:
 				new_sum = tmp_sum
-				new_poisoned_list = tmp_poisoned_list
+				new_poisoned_list = copy.deepcopy(tmp_poisoned_list)
 
 		## len(poisoned_list) += 1
-		poisoned_list = new_poisoned_list
+		poisoned_list = copy.deepcopy(new_poisoned_list)
 		# print(new_sum, poisoned_list)
 		k2 -= 1
 
@@ -877,13 +915,14 @@ def main_gen(config: dict, verbose=True) -> list:
 	return [
 		# CallFunc(GreedyTheRecalculation),
 		# CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
-		CallFunc(RandomAttack),
-		CallFunc(NaiveGreedy),
+		# CallFunc(RandomAttack),
+		# CallFunc(NaiveGreedy),
+		CallFunc(BruteForce),
 		CallFunc(BlockGreedy),
 		# CallFunc(BlockGreedy, formatflag=True),
-		CallFunc(DynamicSequentialAttack_std),
+		# CallFunc(DynamicSequentialAttack_std),
 		# CallFunc(DynamicSequentialAttack_std, formatflag=True),
-		CallFunc(DynamicSequentialAttack_mod),
+		# CallFunc(DynamicSequentialAttack_mod),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=1),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=2),
 		# CallFunc(GreedyFramework, method='__Tree_DFS_depth_limited', __d=4),

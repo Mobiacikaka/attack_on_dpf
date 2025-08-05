@@ -4,7 +4,7 @@
 import multiprocessing, subprocess
 
 multitimes = 1
-parent_dir = 'DATA.NO.MICE/'
+parent_dir = 'test/'
 
 def cut(output, foldername, time, config, read_flag):
 	N = config['N']
@@ -52,6 +52,8 @@ def onerun(config: dict, time, read_flag):
 		print(f'{name}\t{val}\t', end='')
 		foldername += f'{name}_{val}_'
 		param += f'{val}\n'
+	# cutpoint = foldername.find('_ratio_')
+	# foldername = foldername[:cutpoint]
 	print(f'time\t{time}')
 	foldername = parent_dir + foldername
 
@@ -88,7 +90,7 @@ def run_fixed_epsG():
 	exp_elephant_list = [1.0, 2.0, 3.0, 4.0]
 
 	global parent_dir
-	parent_dir = 'DATA.FIXED.ESP_G/'
+	parent_dir = 'DATA.FIXED.EPS_G/'
 
 	args = [
 		({
@@ -99,7 +101,7 @@ def run_fixed_epsG():
 			'ratio': ratio,
 			'exp_mice': exp_elephant/10,
 			'exp_elephant': exp_elephant,
-		}, time, False)
+		}, time, True)
 		for N in N_list
 		for M in M_list
 		for Kperc in Kperc_list
@@ -119,6 +121,7 @@ def run_single_param():
 	Kperc_list = [0.1, 0.2, 0.3, 0.4, 0.5]
 	step_list = [1.0]
 	times = 100
+	read_flag = True
 
 	args = [
 		({
@@ -129,7 +132,7 @@ def run_single_param():
 			'ratio': 0,
 			'exp_mice': 0.1,
 			'exp_elephant': 1.0,
-		}, time, True)
+		}, time, read_flag)
 		for N in N_list
 		for M in M_list
 		for Kperc in Kperc_list
@@ -144,3 +147,4 @@ def run_single_param():
 
 if __name__ == '__main__':
 	run_fixed_epsG()
+	# run_single_param()
