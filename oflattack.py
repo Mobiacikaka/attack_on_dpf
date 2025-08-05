@@ -63,9 +63,6 @@ def PrintPipelines(pls: list, L: list=[]):
 			PrintPipeline(pls[i])
 
 def SumPipelines(pls, list_no: list=[]):
-	if len(list_no) == 0:
-		list_no = list(range(len(pls)))
-
 	sumpl = dec(0)
 	for i in list_no:
 		sumpl += sum(pls[i])
@@ -612,9 +609,11 @@ def BlockGreedy(sim_arg: tuple, K: int):
 			dpfsys.OnPipelineArrival(pls[ts])
 			finished_pls_seq = dpfsys.OnSchedulerTimer()
 			# print(f'{ts}:eps\t', dpfsys.eps_U)
-			if ts == insert_ts:
+			if ts == insert_ts and insert_ts not in finished_pls_seq:
+				pass
+				# print(f'{ts} failed.')
 				# print(f'{ts}\t', pls[ts])
-				assert(insert_ts in finished_pls_seq)
+				# assert(insert_ts in finished_pls_seq)
 
 	return pls, poisoned_list
 
@@ -698,10 +697,6 @@ def DynamicSequentialAttack_std(sim_arg: tuple, K: int, transzendental: tuple=([
 		dpfsys.AddToWaiting(pls[ts])
 		dpfsys.OnPipelineArrival(pls[ts])
 		finished_pls_seq = dpfsys.OnSchedulerTimer()
-		if insert_flag and ts not in finished_pls_seq:
-			print("failed", pls[ts])
-			print("spare", dpfsys.eps_U)
-			assert(0)
 
 	return pls, poisoned_list
 
@@ -772,10 +767,6 @@ def DynamicSequentialAttack_mod(sim_arg: tuple, K: int):
 		dpfsys.AddToWaiting(pls[ts])
 		dpfsys.OnPipelineArrival(pls[ts])
 		finished_pls_seq = dpfsys.OnSchedulerTimer()
-		if insert_flag and ts not in finished_pls_seq:
-			print("failed", pls[ts])
-			print("spare", dpfsys.eps_U)
-			assert(0)
 
 	return pls, poisoned_list
 
@@ -912,7 +903,8 @@ def main_gen(config: dict, verbose=True) -> list:
 		benign_pls = ReadDataset(N) # read from stdin
 	sim_arg = (eps_Global, N, M, benign_pls)
 	if verbose and not read_flag:
-		PrintPipelines(benign_pls, list(range(N)))
+		pass
+		# PrintPipelines(benign_pls, list(range(N)))
 
 	def CallFunc(funcname, formatflag=False, **kwargs) -> float:
 		if not verbose:
@@ -935,6 +927,7 @@ def main_gen(config: dict, verbose=True) -> list:
 			print(len(complete_poisoned) == K)
 		if verbose:
 			print(ReturnFunctionName(funcname))
+			print('complete num: ', len(complete_poisoned))
 			print('%4f' % perc)
 			print('%4f' % duration)
 			print(poisoned_list)
@@ -947,7 +940,7 @@ def main_gen(config: dict, verbose=True) -> list:
 		# CallFunc(GreedyFramework, method='__Tree_MaxEveryDepth'),
 		CallFunc(RandomAttack),
 		# CallFunc(NaiveGreedy),
-		# CallFunc(BlockGreedy),
+		CallFunc(BlockGreedy),
 		# CallFunc(BlockGreedy, formatflag=True),
 		CallFunc(DynamicSequentialAttack_std),
 		# CallFunc(DynamicSequentialAttack_std, formatflag=True),

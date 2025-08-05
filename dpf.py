@@ -3,7 +3,7 @@
 from decimal import Decimal as dec
 import random
 
-dec_format = '%.1f'
+dec_format = '%.2f'
 
 class DPF:
 	def __init__(self, eps_Global: float, N: int, M: int):
@@ -38,7 +38,7 @@ class DPF:
 	def SortWaitingPipelines(self):
 		return sorted(self.wp, key=lambda x: self.DominantShareList(self.wp.get(x)))
 
-	def OnSchedulerTimer(self) -> list:
+	def OnSchedulerTimer_nornd(self) -> list:
 		sorted_pipelines = self.SortWaitingPipelines()
 		i = 0
 		finished = []
@@ -66,7 +66,7 @@ class DPF:
 		self.timestamp += 1
 		return finished
 
-	def rndOnSchedulerTimer(self) -> list:
+	def OnSchedulerTimer_withrnd(self) -> list:
 		finished = []
 		while True:
 			canrunlist = []
@@ -78,13 +78,14 @@ class DPF:
 				assert(d_i != None)
 				if self.CanRun(d_i):
 					canrunlist.append(seq)
-					dslist.append(float(self.DominantShare(d_i)))
+					# dslist.append(1.0/float(self.DominantShare(d_i)))
+					dslist.append(1.0/(i+1)**2)
 			if len(canrunlist) == 0:
 				break
 			## generate probabilistic distribution
 			distribution = tuple(dslist)
 			## choose from distribution
-			seq = random.choices(canrunlist, cum_weights=distribution, k=1)[0]
+			seq = random.choices(canrunlist, weights=distribution, k=1)[0]
 			d_i = self.wp.get(seq)
 			assert(d_i != None)
 			if(self.CanRun(d_i)):
@@ -104,6 +105,9 @@ class DPF:
 						self.eps_A[j] -= d_i[j]
 		self.timestamp += 1
 		return finished
+
+	def OnSchedulerTimer(self) -> list:
+		return self.OnSchedulerTimer_withrnd()
 
 	def DominantShare(self, d_i) -> dec:
 		max_share = dec(dec_format % 0)
