@@ -1,0 +1,118 @@
+from .pipeline import Pipeline
+
+class DPFScheduler:
+	"""
+	Suppose the minimum epsilon accepted is 0.01,
+	then the float in the system is multiply of 100,
+	to prevent the float number accuracy issues.
+	"""
+
+	def __init__(self, GlobalEpsilon: int, NumberFirstPL: int, NumBlock: int) -> None:
+		self.GlobalEpsilon = GlobalEpsilon
+		self.NumberFirstPL = NumberFirstPL
+		self.NumBlock = NumBlock
+
+		self.GlobalBudget: list[int] = []
+		self.UnalloBudget: list[int] = []
+		self.AllocaBudget: list[int] = []
+		self.ConsumBudget: list[int] = []
+
+		self.TimeSlot: int = 0
+
+		self.WaitingPipelineList: dict[int, Pipeline] = {}
+		self.CompletedPipelineList: list[int] = []
+
+	def OnDataBlockCreation(self) -> None:
+		self.GlobalBudget.append(self.GlobalEpsilon)
+		self.UnalloBudget.append(0)
+		self.AllocaBudget.append(0)
+		self.ConsumBudget.append(0)
+
+	def AddToWaitingList(self, pl: Pipeline) -> None:
+		## Tuple List
+		## (time, Pipeline)
+		## ...
+		## (time, Pipeline)
+		self.WaitingPipelineList[self.TimeSlot] = pl
+		pl.SetTimeSlot(self.TimeSlot)
+
+	def OnPipelineArrival(self, pl: Pipeline) -> None:
+		for block_index in range(self.NumBlock):
+			if pl.DemandList[block_index] > 0:
+				UnallocatedBudget_j = self.GlobalBudget[block_index] - self.ConsumBudget[block_index]
+				self.UnalloBudget[block_index] = min(
+					UnallocatedBudget_j,
+					self.UnalloBudget[block_index]+self.GlobalBudget[block_index]//self.NumberFirstPL
+				)
+
+	def GetSortedDemandRatio(self, pl: Pipeline) -> list[float]:
+		demandratio: list[float] = [0.0 for _ in range(self.NumBlock)]
+		for block_index in range(self.NumBlock):
+			demandratio[block_index] = pl.DemandList[block_index] / self.GlobalBudget[block_index]
+		demandratio.sort(reverse=True)
+		return demandratio
+
+	def GetPipelineFromList(self, timeslot: int) -> Pipeline:
+		pipeline = self.WaitingPipelineList.get(timeslot)
+		assert(pipeline != None)
+		return pipeline
+
+	def SortWaitingPipelineList(self) -> list[int]:
+		"""
+		Return the time slot list sorted by pipeline's demand ratio
+		"""
+		return sorted(
+			self.WaitingPipelineList,
+			key=lambda timeslot: self.GetSortedDemandRatio(self.GetPipelineFromList(timeslot))
+		)
+
+	def CanRun(self, pl: Pipeline) -> bool:
+		"""
+		Check if pipeline have less budget than Unallocated Budget
+		"""
+		for block_index in range(self.NumBlock):
+			if pl.DemandList[block_index] > self.UnalloBudget[block_index]:
+				return False
+		return True
+
+	def AllocatePipeline(self, pl: Pipeline) -> None:
+		"""
+		Allocate budget to pipeline
+		"""
+		for block_index in range(self.NumBlock):
+			self.UnalloBudget[block_index] -= pl.DemandList[block_index]
+			self.AllocaBudget[block_index] += pl.DemandList[block_index]
+		return
+
+	def RunPipeline(self, pl: Pipeline) -> bool:
+		"""
+		Remove Privacy Budget from Allocated Budget;
+		Add Privacy Budget to Consumed Budget;
+		Pop pipeline from Waiting List
+		Add pipeline to Complete List
+		Return True if pipeline is ran succesfully.
+		"""
+		for block_index in range(self.NumBlock):
+			self.AllocaBudget[block_index] -= pl.DemandList[block_index]
+			self.ConsumBudget[block_index] += pl.DemandList[block_index]
+		self.WaitingPipelineList.pop(pl.TimeSlot)
+		self.CompletedPipelineList.append(pl.TimeSlot)
+		return True
+
+	def OnSchedulerTimer(self):
+		"""
+		Scheduling system
+		"""
+		SortedWaitingPipelineList: list[int] = self.SortWaitingPipelineList()
+		pipeline_index = 0
+		FinishedPipelineList: list[int] = []
+		while pipeline_index < len(SortedWaitingPipelineList):
+			pipeline_time_slot: int = SortedWaitingPipelineList[pipeline_index] # comment
+			pipeline: Pipeline = self.GetPipelineFromList(pipeline_time_slot)
+			if self.CanRun(pipeline):
+				self.AllocatePipeline(pipeline)
+				self.RunPipeline(pipeline)
+				FinishedPipelineList.append(pipeline_time_slot)
+			pipeline_index += 1
+		self.TimeSlot += 1
+		return FinishedPipelineList
