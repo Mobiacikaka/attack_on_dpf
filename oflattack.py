@@ -738,6 +738,12 @@ def DynamicSequentialAttack_std(sim_arg: tuple, K: int, transzendental: tuple=([
 
 	return pls, poisoned_list
 
+def DSA_relax(sim_arg: tuple, K: int):
+	eps_Golbal, N, M, pls = sim_arg
+	assert(len(pls) + K >= N)
+
+	dpfsys = dpf.DPF(eps_Global=eps_Golbal, N=N, M=M)
+
 def DynamicSequentialAttack_mod(sim_arg: tuple, K: int):
 	eps_Global, N, M, pls = sim_arg
 	assert(len(pls) + K >= N)
