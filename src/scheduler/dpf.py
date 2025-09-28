@@ -1,3 +1,4 @@
+from copy import copy
 from .pipeline import Pipeline
 
 class DPFScheduler:
@@ -116,3 +117,28 @@ class DPFScheduler:
 			pipeline_index += 1
 		self.TimeSlot += 1
 		return FinishedPipelineList
+
+	## Public Functions
+	def GetNumberFirstPL(self) -> int:
+		"""
+		Return the number of pipelines which DPF scheduler will release new privacy block
+		"""
+		return self.NumberFirstPL
+
+	def GetNumberBlock(self) -> int:
+		"""
+		Return the number of data blocks
+		"""
+		return self.NumBlock
+
+	def GetTimeslot(self) -> int:
+		"""
+		Return the current time of the scheduler
+		"""
+		return self.TimeSlot
+
+	def GetUnallocatedBudgetList(self) -> list[int]:
+		"""
+		Return the copy of Unallocated Budget List
+		"""
+		return copy.deepcopy(self.UnalloBudget)
