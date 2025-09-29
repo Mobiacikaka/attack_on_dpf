@@ -4,7 +4,7 @@ from scheduler.pipeline import Pipeline
 
 class Attacker(BasicAttacker):
 	"""
-	Lowest Budget Attack with Fixed Timeslot
+	Lowest Budget with Fixed Timeslot Attack
 		Attack the DPF system with fixed time slot.
 		Generate the AtkPipeline with the minimum budget of all blocks
 			to guarantee the allocation
@@ -22,6 +22,7 @@ class Attacker(BasicAttacker):
 			AtkTimeslotList.append(NumberFirstPL - i * AtkInterval)
 		AtkTimeslotList.reverse()
 		self.AtkTimeslotList: list[int] = AtkTimeslotList
+		print(self.AtkTimeslotList)
 
 	def AttackScheduler(self, scheduler: DPFScheduler) -> None | Pipeline:
 		"""
