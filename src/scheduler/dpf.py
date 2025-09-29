@@ -1,6 +1,6 @@
 from scheduler.pipeline import Pipeline
 
-from copy import copy
+import copy
 
 class DPFScheduler:
 	"""
@@ -23,6 +23,9 @@ class DPFScheduler:
 
 		self.WaitingPipelineList: dict[int, Pipeline] = {}
 		self.CompletedPipelineList: list[int] = []
+
+		for _ in range(self.NumBlock):
+			self.OnDataBlockCreation()
 
 	def OnDataBlockCreation(self) -> None:
 		self.GlobalBudget.append(self.GlobalEpsilon)
