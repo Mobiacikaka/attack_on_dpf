@@ -27,12 +27,13 @@ class Simulator:
 
 	def GeneratePipelineList(
 		self,
-		mice_ratio=50,
-		elephant_ratio=50,
+		mice_ratio=0,
+		elephant_ratio=100,
 		mice_scale=10,
 		elephant_scale=100,
 	)  -> list[Pipeline]:
 		"""
+		Generate Synthetic Pipeline
 		"""
 		assert(mice_ratio + elephant_ratio == 100)
 		assert(mice_scale < elephant_scale)
@@ -74,8 +75,6 @@ class Simulator:
 			PipelineList.append(Pipeline(DemandList=DemandList))
 
 		# self.PipelineList = PipelineList
-		for pl in PipelineList:
-			print(pl.DemandList)
 		return PipelineList
 
 	def StartSimulation(self) -> None:
