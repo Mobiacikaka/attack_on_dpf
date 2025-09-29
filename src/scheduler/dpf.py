@@ -1,5 +1,6 @@
+from scheduler.pipeline import Pipeline
+
 from copy import copy
-from .pipeline import Pipeline
 
 class DPFScheduler:
 	"""
@@ -106,6 +107,7 @@ class DPFScheduler:
 		"""
 		SortedWaitingPipelineList: list[int] = self.SortWaitingPipelineList()
 		pipeline_index = 0
+		## The time slot of finished pipelines
 		FinishedPipelineList: list[int] = []
 		while pipeline_index < len(SortedWaitingPipelineList):
 			pipeline_time_slot: int = SortedWaitingPipelineList[pipeline_index] # comment
