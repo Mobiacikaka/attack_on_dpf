@@ -20,11 +20,10 @@ class Simulator:
 		self.PipelineList: list = PipelineList
 		self.NumAtkPL: int = NumAtkPL
 		self.verbose: bool = verbose
-		self.scheduler: DPFScheduler = DPFScheduler(self.GlobalEpsilon, self.NumberFirstPL, self.NumBlock)
-		self.attacker: BasicAttacker = BasicAttacker(scheduler=self.scheduler, NumAtkPL=self.NumAtkPL)
+		self.AttackerClass: type[BasicAttacker] = BasicAttacker
 
-	def SetAttacker(self, attacker: BasicAttacker) -> None:
-		self.attacker: BasicAttacker = attacker
+	def SetAttacker(self, AttackerClass: type[BasicAttacker]) -> None:
+		self.AttackerClass = AttackerClass
 
 	def GeneratePipelineList(
 		self,
@@ -32,7 +31,7 @@ class Simulator:
 		elephant_ratio=50,
 		mice_scale=10,
 		elephant_scale=100,
-	):
+	)  -> list[Pipeline]:
 		"""
 		"""
 		assert(mice_ratio + elephant_ratio == 100)
@@ -74,10 +73,16 @@ class Simulator:
 			DemandList = [int(x) + 1 for x in DemandList]
 			PipelineList.append(Pipeline(DemandList=DemandList))
 
-		self.PipelineList = PipelineList
+		# self.PipelineList = PipelineList
+		for pl in PipelineList:
+			print(pl.DemandList)
+		return PipelineList
 
 	def StartSimulation(self) -> None:
-		scheduler: DPFScheduler = self.scheduler
+		if self.PipelineList == []:
+			self.PipelineList = self.GeneratePipelineList()
+		scheduler: DPFScheduler = DPFScheduler(self.GlobalEpsilon, self.NumberFirstPL, self.NumBlock)
+		attacker: BasicAttacker = self.AttackerClass(scheduler=scheduler, NumAtkPL=self.NumAtkPL)
 
 		if self.verbose == True:
 			print("\n---- Scheduling Settings ----")
@@ -89,15 +94,17 @@ class Simulator:
 
 		for Pipeline in self.PipelineList:
 			## First Try to attack
-			AtkPipeline = self.attacker.AttackScheduler(scheduler=scheduler)
+			AtkPipeline = attacker.AttackScheduler(scheduler=scheduler)
 			if AtkPipeline != None:
 				scheduler.AddToWaitingList(AtkPipeline)
 				scheduler.OnPipelineArrival(AtkPipeline)
 				FinishedPipelineList: list = scheduler.OnSchedulerTimer()
-				if scheduler.GetTimeslot() in FinishedPipelineList and self.verbose == True:
-					print("Attack Success!")
+				if self.verbose == True:
 					print("AtkPipeline:", AtkPipeline.DemandList)
+					print("Time slot", scheduler.GetTimeslot()-1, "\tPipeline", FinishedPipelineList)
 
 			scheduler.AddToWaitingList(Pipeline)
 			scheduler.OnPipelineArrival(Pipeline)
 			FinishedPipelineList: list = scheduler.OnSchedulerTimer()
+			if self.verbose == True:
+				print("Time slot", scheduler.GetTimeslot()-1, "\tPipeline", FinishedPipelineList)
