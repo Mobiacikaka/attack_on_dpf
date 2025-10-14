@@ -31,7 +31,7 @@ class Simulator:
 		elephant_ratio=100,
 		mice_scale=10,
 		elephant_scale=100,
-	)  -> list[Pipeline]:
+	) -> None:
 		"""
 		Generate Synthetic Pipeline
 		"""
@@ -74,12 +74,11 @@ class Simulator:
 			DemandList = [int(x) + 1 for x in DemandList]
 			PipelineList.append(Pipeline(DemandList=DemandList))
 
-		# self.PipelineList = PipelineList
-		return PipelineList
+		self.PipelineList = PipelineList
 
 	def StartSimulation(self) -> None:
 		if self.PipelineList == []:
-			self.PipelineList = self.GeneratePipelineList()
+			self.GeneratePipelineList()
 		scheduler: DPFScheduler = DPFScheduler(self.GlobalEpsilon, self.NumberFirstPL, self.NumBlock)
 		attacker: BasicAttacker = self.AttackerClass(scheduler=scheduler, NumAtkPL=self.NumAtkPL)
 
@@ -91,19 +90,32 @@ class Simulator:
 			print("Number of Attack Pipelines", self.NumAtkPL)
 			print("\n---- Pipeline Scheduling ----")
 
+		FinishedPipelineList: list[int] = []
+
 		for Pipeline in self.PipelineList:
 			## First Try to attack
 			AtkPipeline = attacker.AttackScheduler(scheduler=scheduler)
 			if AtkPipeline != None:
 				scheduler.AddToWaitingList(AtkPipeline)
 				scheduler.OnPipelineArrival(AtkPipeline)
-				FinishedPipelineList: list = scheduler.OnSchedulerTimer()
+				FinishedPipelineList += scheduler.OnSchedulerTimer()
 				if self.verbose == True:
-					print("AtkPipeline:", AtkPipeline.DemandList)
-					print("Time slot", scheduler.GetTimeslot()-1, "\tPipeline", FinishedPipelineList)
+					# print("AtkPipeline:", AtkPipeline.DemandList)
+					# print("Time slot", scheduler.GetTimeslot()-1, "\tPipeline", FinishedPipelineList)
+					pass
 
 			scheduler.AddToWaitingList(Pipeline)
 			scheduler.OnPipelineArrival(Pipeline)
-			FinishedPipelineList: list = scheduler.OnSchedulerTimer()
+			FinishedPipelineList += scheduler.OnSchedulerTimer()
 			if self.verbose == True:
-				print("Time slot", scheduler.GetTimeslot()-1, "\tPipeline", FinishedPipelineList)
+				# print("Time slot", scheduler.GetTimeslot()-1, "\tPipeline", FinishedPipelineList)
+				pass
+
+		self.attacker = attacker
+		self.FinishedPipelineList = FinishedPipelineList
+
+	def GetSimulationResult(self) -> float:
+		attacker_budget_sum = self.attacker.CalculateGainedBudget(self.FinishedPipelineList)
+		## budget fraction
+		attacker_budget_frc = attacker_budget_sum * 1.0 / (self.GlobalEpsilon * self.NumBlock)
+		return attacker_budget_frc
