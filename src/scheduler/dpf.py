@@ -147,3 +147,6 @@ class DPFScheduler:
 		Return the copy of Unallocated Budget List
 		"""
 		return copy.deepcopy(self.UnalloBudget)
+
+	def GetGlobalEpsilon(self) -> int:
+		return self.GlobalEpsilon

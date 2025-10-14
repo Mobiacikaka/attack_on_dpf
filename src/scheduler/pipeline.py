@@ -12,3 +12,15 @@ class Pipeline:
 		assert(timeslot >= 0)
 		self.TimeSlot = timeslot
 		return
+
+	def GetTimeSlot(self) -> int:
+		return self.TimeSlot
+
+	def BudgetSum(self) -> int:
+		return sum(self.DemandList)
+
+	def GetDominantShare(self) -> int:
+		return max(self.DemandList)
+
+	def GetDominantShareIndex(self) -> int:
+		return self.DemandList.index(self.GetDominantShare())

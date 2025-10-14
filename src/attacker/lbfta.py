@@ -11,8 +11,9 @@ class Attacker(BasicAttacker):
 	"""
 
 	def __init__(self, scheduler: DPFScheduler, NumAtkPL: int) -> None:
-		self.AtkTimeslotList: list[int] = []
 		self.NumAtkPL = NumAtkPL
+		self.AtkTimeslotList = []
+		self.AtkPipelineList = []
 		self.GenerateAttackTimeslot(scheduler.GetNumberFirstPL(), NumAtkPL=self.NumAtkPL)
 
 	def GenerateAttackTimeslot(self, NumberFirstPL: int, NumAtkPL: int) -> None:
@@ -22,7 +23,7 @@ class Attacker(BasicAttacker):
 			AtkTimeslotList.append(NumberFirstPL - i * AtkInterval)
 		AtkTimeslotList.reverse()
 		self.AtkTimeslotList: list[int] = AtkTimeslotList
-		print(self.AtkTimeslotList)
+		# print(self.AtkTimeslotList)
 
 	def AttackScheduler(self, scheduler: DPFScheduler) -> None | Pipeline:
 		"""
@@ -36,6 +37,7 @@ class Attacker(BasicAttacker):
 
 		## The current time slot is in the AtkTimeslotList
 		## ATTACK IN THIS MOMENT
-		UnallocatedBudgetList = scheduler.GetUnallocatedBudgetList()
-		minbudget = min(UnallocatedBudgetList)
-		return Pipeline([minbudget] * scheduler.GetNumberBlock())
+		minbudget = min(scheduler.GetUnallocatedBudgetList())
+		AtkPipeline = Pipeline([minbudget] * scheduler.GetNumberBlock())
+		self.AtkPipelineList.append(AtkPipeline)
+		return AtkPipeline
