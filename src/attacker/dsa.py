@@ -21,8 +21,7 @@ class Attacker(BasicAttacker):
 
 		## Intuitive Function Calculation
 		remain_budget = \
-			(scheduler.GetNumberFirstPL() -  scheduler.GetTimeslot() - 1) * \
-			(scheduler.GetGlobalEpsilon() // scheduler.GetNumberFirstPL()) + \
+			(scheduler.GetNumberFirstPL() -  scheduler.GetTimeslot() - 1) * scheduler.GetBudgetStep() + \
 			scheduler.GetUnallocatedBudgetList()[dominant_share_index]
 
 		remain_budget -= dominant_share * (self.NumAtkPL - len(self.AtkPipelineList))
@@ -48,7 +47,7 @@ class Attacker(BasicAttacker):
 		for pipeline_time_slot in SortedWaitingPipelineList:
 			pipeline: Pipeline = scheduler.GetPipelineFromList(pipeline_time_slot)
 
-			## 
+			##
 			CanRunFlag: bool = True
 			for block_index in range(NumBlock):
 				if pipeline.DemandList[block_index] > UnallocatedBudgetList[block_index]:

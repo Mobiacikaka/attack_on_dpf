@@ -1,37 +1,55 @@
+import config
 from simulator import Simulator
 from attacker.lbfta import Attacker as LBFTAttacker
 from attacker.lba import Attacker as LBAttacker
 from attacker.dsa import Attacker as DSAttacker
 import numpy
 
-def main(verbose: bool=False):
+def main(
+	GlobalEpsilon: int,
+	NumberFirstPL: int,
+	NumBlock: int,
+	PipelineList: list,
+	NumAtkPL: int,
+	verbose: bool=False,
+):
+	"""
+	Run only one setting
+	"""
 	simulator = Simulator(
-		GlobalEpsilon=40*100,	# int(float(input()) * 100),
-		NumberFirstPL=100,   	# int(input()),
-		NumBlock=10,         	# int(input()),
-		PipelineList=[],     	# [],
-		NumAtkPL=30,         	# int(input()),
+		GlobalEpsilon=GlobalEpsilon,
+		NumberFirstPL=NumberFirstPL,
+		NumBlock=NumBlock,
+		PipelineList=PipelineList,
+		NumAtkPL=NumAtkPL,
 		verbose=verbose,
 	)
+
+	config.PrintConfig()
 
 	LBFAT_result_list = []
 	DSA_result_list = []
 	LBA_result_list = []
 
-	for _ in range(100):
-		simulator.GeneratePipelineList(mice_ratio=75, elephant_ratio=25)
+	for _ in range(config.times):
+		simulator.GeneratePipelineList(
+			mice_ratio=config.mice_ratio,
+			mice_scale=config.mice_scale,
+			elephant_ratio=config.elephant_ratio,
+			elephant_scale=config.elephant_scale,
+		)
 
-		if verbose == True:
-			print("\n##### DSA #####")
-		simulator.SetAttacker(DSAttacker)
-		simulator.StartSimulation()
-		DSA_result_list.append(simulator.GetSimulationResult())
+		# if verbose == True:
+		# 	print("\n##### DSA #####")
+		# simulator.SetAttacker(DSAttacker)
+		# simulator.StartSimulation()
+		# DSA_result_list.append(simulator.GetSimulationResult())
 
-		if verbose == True:
-			print("\n##### LBFTAttacker #####")
-		simulator.SetAttacker(LBFTAttacker)
-		simulator.StartSimulation()
-		LBFAT_result_list.append(simulator.GetSimulationResult())
+		# if verbose == True:
+		# 	print("\n##### LBFTAttacker #####")
+		# simulator.SetAttacker(LBFTAttacker)
+		# simulator.StartSimulation()
+		# LBFAT_result_list.append(simulator.GetSimulationResult())
 
 		if verbose == True:
 			print("\n##### LBAttacker #####")
@@ -39,9 +57,16 @@ def main(verbose: bool=False):
 		simulator.StartSimulation()
 		LBA_result_list.append(simulator.GetSimulationResult())
 
-	print("DSA\t", numpy.mean(DSA_result_list))
-	print("LBFAT\t", numpy.mean(LBFAT_result_list))
-	print("LBA\t", numpy.mean(LBA_result_list))
+	# print("DSA\t", numpy.mean(DSA_result_list))
+	# print("LBFAT\t", numpy.mean(LBFAT_result_list))
+	print("LBA:", numpy.mean(LBA_result_list))
 
 if __name__ == '__main__':
-	main(verbose=False)
+	main(
+		config.GlobalEpsilon,
+		config.NumberFirstPL,
+		config.NumBlock,
+		config.PipelineList,
+		config.NumAtkPL,
+		verbose=config.verbose,
+	)

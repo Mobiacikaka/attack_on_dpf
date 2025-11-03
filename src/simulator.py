@@ -100,9 +100,10 @@ class Simulator:
 				scheduler.OnPipelineArrival(AtkPipeline)
 				FinishedPipelineList += scheduler.OnSchedulerTimer()
 				if self.verbose == True:
-					# print("AtkPipeline:", AtkPipeline.DemandList)
+					print("AtkPipeline:", AtkPipeline.DemandList)
 					# print("Time slot", scheduler.GetTimeslot()-1, "\tPipeline", FinishedPipelineList)
 					pass
+				continue
 
 			scheduler.AddToWaitingList(Pipeline)
 			scheduler.OnPipelineArrival(Pipeline)

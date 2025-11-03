@@ -150,3 +150,6 @@ class DPFScheduler:
 
 	def GetGlobalEpsilon(self) -> int:
 		return self.GlobalEpsilon
+
+	def GetBudgetStep(self) -> int:
+		return self.GlobalEpsilon // self.NumberFirstPL
