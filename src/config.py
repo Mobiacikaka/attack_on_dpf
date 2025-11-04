@@ -1,5 +1,6 @@
 """
 Global Module
+	Need 9 lines in input file
 """
 GlobalEpsilon= int(input())
 NumberFirstPL= int(input())
