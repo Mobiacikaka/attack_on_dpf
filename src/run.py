@@ -24,6 +24,7 @@ def run():
 	]
 
 	outputfile = open("result.csv", "w")
+	outputfile.write("GlobalEpsilon,NumberFirstPL,NumBlock,NumAtkPL,mice_ratio,mice_scale,elephant_ratio,elephant_scale,result\n")
 	for arg in args:
 		input_str = ""
 		for par in arg:
