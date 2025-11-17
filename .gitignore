@@ -4,3 +4,5 @@ EVALUATION
 EVALUATION/*
 *.xlsx
 src/result*.csv
+OLDRESULT/*
+utils/figs/*
