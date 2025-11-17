@@ -1,7 +1,7 @@
 from scheduler.dpf import DPFScheduler
 from attacker.attacker import BasicAttacker
 from scheduler.pipeline import Pipeline
-import config
+import config, statistics
 
 def PrintThreshold(threshold):
 	if not hasattr(PrintThreshold, "has_printed"):
@@ -25,8 +25,17 @@ class Attacker(BasicAttacker):
 		self.AtkPipelineList = []
 		PrintThreshold(self.THRESHOLD)
 
-	def SetThresholdCoefficient(self, threshold: int) -> None:
+	def SetThreshold(self, threshold: int) -> None:
 		self.THRESHOLD = threshold
+
+	def ThresholdAdjustmentParameter(self, scheduler:DPFScheduler) -> float:
+		"""
+		Dynamic adjust the threshold
+		"""
+		NumUnusedAtkPL = self.NumAtkPL - len(self.AtkPipelineList) ## Number of Unused Adversarial Pipeline
+		TimeSlotLeft = scheduler.GetNumberFirstPL() - scheduler.GetTimeslot()
+		adj: float = (self.NumAtkPL / scheduler.GetNumberFirstPL()) / (NumUnusedAtkPL / TimeSlotLeft) * 0.5 ## Adjustment
+		return adj
 
 	def AttackScheduler(self, scheduler: DPFScheduler) -> None | Pipeline:
 		"""
@@ -36,19 +45,27 @@ class Attacker(BasicAttacker):
 		if len(self.AtkPipelineList) == self.NumAtkPL:
 			return None
 
+		UnallocatedBudgetList = scheduler.GetUnallocatedBudgetList()
 		## Return None when the minimum budget is below threshold
-		minbudget = min(scheduler.GetUnallocatedBudgetList())
+		minbudget = min(UnallocatedBudgetList)
+		## Find Meidan instead of Minimum
+		medianbudget = int(statistics.median(UnallocatedBudgetList))
 
-		if self.NumAtkPL - len(self.AtkPipelineList) + scheduler.GetTimeslot() + 1 == scheduler.GetNumberFirstPL():
+		if scheduler.GetTimeslot() + self.NumAtkPL - len(self.AtkPipelineList) >= scheduler.GetNumberFirstPL():
 			AtkPipeline = Pipeline([scheduler.GetBudgetStep()] * scheduler.GetNumberBlock())
 			self.AtkPipelineList.append(AtkPipeline)
 			return AtkPipeline
 
 		## Budget Threshold
 		# budget_threshold = scheduler.GetBudgetStep() * self.THRESHOLD_COEFFICIENT
-		if minbudget < self.THRESHOLD:
+		if minbudget < self.THRESHOLD * self.ThresholdAdjustmentParameter(scheduler):
 			return None
 		else:
-			AtkPipeline = Pipeline([minbudget] * scheduler.GetNumberBlock())
+			# DemandList = [minbudget + scheduler.GetBudgetStep()] * scheduler.GetNumberBlock()
+			DemandList = [minbudget] * scheduler.GetNumberBlock()
+			for i in range(scheduler.GetNumberBlock()):
+				if DemandList[i] > medianbudget:
+					DemandList[i] = medianbudget
+			AtkPipeline = Pipeline(DemandList)
 			self.AtkPipelineList.append(AtkPipeline)
 			return AtkPipeline
