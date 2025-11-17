@@ -20,17 +20,19 @@ def run():
 		for mice_scale in [10]
 		for elephant_scale in [100]
 		for mice_ratio, elephant_ratio in [(75, 25), (0, 100)]
-		for times in [1000]
+		for times in [100]
 	]
 
-	outputfile = open("result.csv", "w")
+	outputfile = open("result_tmp.csv", "w")
 	outputfile.write("GlobalEpsilon,NumberFirstPL,NumBlock,NumAtkPL,mice_ratio,mice_scale,elephant_ratio,elephant_scale,result\n")
+	i = 0
 	for arg in args:
 		input_str = ""
 		for par in arg:
 			input_str = input_str + f"{par}\n"
 
-		print("Running")
+		print(f"Running {i} args")
+		i += 1
 		print(input_str)
 
 		result = subprocess.run(["python", "main.py"], input=input_str, capture_output=True, text=True)
