@@ -33,4 +33,5 @@ class BasicAttacker:
 		for AtkPipeline in self.AtkPipelineList:
 			if AtkPipeline.TimeSlot in FinishedPipelineList:
 				budget_sum += AtkPipeline.BudgetSum()
+				# print(f"Atk{AtkPipeline.TimeSlot}", AtkPipeline.DemandList)
 		return budget_sum
