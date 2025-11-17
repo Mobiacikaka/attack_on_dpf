@@ -6,3 +6,4 @@ EVALUATION/*
 src/result*.csv
 OLDRESULT/*
 utils/figs/*
+*.bak
