@@ -65,6 +65,17 @@ class Attacker(BasicAttacker):
 				for block_index in range(NumBlock):
 					UnallocatedBudgetList[block_index] -= pipeline.DemandList[block_index]
 
+		if scheduler.GetTimeslot() + self.NumAtkPL - len(self.AtkPipelineList) >= scheduler.GetNumberFirstPL():
+			attackflag = True
+			if len(SortedWaitingPipelineList) != 0:
+				maxbudget = max(
+					scheduler.GetPipelineFromList(
+						SortedWaitingPipelineList[0]
+					).DemandList
+				)
+			else:
+				maxbudget = scheduler.GetGlobalEpsilon()
+
 		if attackflag == True:
 			DemandList: list[int] = [0] * NumBlock
 			for block_index in range(NumBlock):
