@@ -57,7 +57,7 @@ def main(
 		simulator.StartSimulation()
 		LBA_result_list.append(simulator.GetSimulationResult())
 
-	# print("DSA\t", numpy.mean(DSA_result_list))
+	# print("DSA:", numpy.mean(DSA_result_list))
 	# print("LBFAT\t", numpy.mean(LBFAT_result_list))
 	print("LBA:", numpy.mean(LBA_result_list))
 
