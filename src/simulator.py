@@ -22,8 +22,8 @@ class Simulator:
 		self.verbose: bool = verbose
 		self.AttackerClass: type[BasicAttacker] = BasicAttacker
 
-	def SetAttacker(self, AttackerClass: type[BasicAttacker]) -> None:
-		self.AttackerClass = AttackerClass
+	def SetAttacker(self, attacker: BasicAttacker) -> None:
+		self.attacker = attacker
 
 	def GeneratePipelineList(
 		self,
@@ -74,13 +74,14 @@ class Simulator:
 			DemandList = [int(x) + 1 for x in DemandList]
 			PipelineList.append(Pipeline(DemandList=DemandList))
 
+		## Regular Pipelines
 		self.PipelineList = PipelineList
 
 	def StartSimulation(self) -> None:
 		if self.PipelineList == []:
 			self.GeneratePipelineList()
 		scheduler: DPFScheduler = DPFScheduler(self.GlobalEpsilon, self.NumberFirstPL, self.NumBlock)
-		attacker: BasicAttacker = self.AttackerClass(scheduler=scheduler, NumAtkPL=self.NumAtkPL)
+		attacker: BasicAttacker = self.attacker
 
 		if self.verbose == True:
 			print("\n---- Scheduling Settings ----")
@@ -120,3 +121,6 @@ class Simulator:
 		## budget fraction
 		attacker_budget_frc = attacker_budget_sum * 1.0 / (self.GlobalEpsilon * self.NumBlock)
 		return attacker_budget_frc
+
+	def GetRegularPipelineList(self) -> list:
+		return self.PipelineList
