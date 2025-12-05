@@ -10,11 +10,10 @@ class Attacker(BasicAttacker):
 			to guarantee the allocation
 	"""
 
-	def __init__(self, scheduler: DPFScheduler, NumAtkPL: int) -> None:
+	def __init__(self, NumAtkPL: int) -> None:
 		self.NumAtkPL = NumAtkPL
 		self.AtkTimeslotList = []
 		self.AtkPipelineList = []
-		self.GenerateAttackTimeslot(scheduler.GetNumberFirstPL(), NumAtkPL=self.NumAtkPL)
 
 	def GenerateAttackTimeslot(self, NumberFirstPL: int, NumAtkPL: int) -> None:
 		AtkTimeslotList: list[int] = []
@@ -23,12 +22,15 @@ class Attacker(BasicAttacker):
 			AtkTimeslotList.append(NumberFirstPL - i * AtkInterval)
 		AtkTimeslotList.reverse()
 		self.AtkTimeslotList: list[int] = AtkTimeslotList
-		# print(self.AtkTimeslotList)
 
 	def AttackScheduler(self, scheduler: DPFScheduler) -> None | Pipeline:
 		"""
 		Main Attack Function
 		"""
+
+		## Generate Attack Time Slot List
+		if self.AtkTimeslotList == []:
+			self.GenerateAttackTimeslot(scheduler.GetNumberFirstPL(), NumAtkPL=self.NumAtkPL)
 
 		## The current time slot is not in the AtkTimeslotList
 		## DO NOT ATTACK IN THIS MOMENT

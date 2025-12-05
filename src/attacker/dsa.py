@@ -7,7 +7,7 @@ class Attacker(BasicAttacker):
 	Dynamic Sequential Attack
 	"""
 
-	def __init__(self, scheduler: DPFScheduler, NumAtkPL: int) -> None:
+	def __init__(self, NumAtkPL: int) -> None:
 		self.NumAtkPL = NumAtkPL
 		self.AtkPipelineList = []
 
@@ -59,7 +59,7 @@ class Attacker(BasicAttacker):
 			##
 			if self.Attackable(scheduler, pipeline_time_slot):
 				attackflag: bool = True
-				maxbudget = max(pipeline.DemandList)
+				maxbudget = pipeline.GetDominantShare()
 				break
 			else:
 				for block_index in range(NumBlock):
