@@ -1,29 +1,30 @@
 import subprocess
 
 def run():
+	scaling_factor = 1000
 	args = [
 		(
-			int(step * NumberFirstPL * 100),
+			int(step * NumberFirstPL * scaling_factor),
 			NumberFirstPL,
 			NumBlock,
-			int(K_ratio * NumberFirstPL),
+			int(K_ratio * NumberFirstPL), ## Number of AtkPipeline
 			mice_ratio,
-			mice_scale,
+			int(mice_scale * step * scaling_factor),
 			elephant_ratio,
-			elephant_scale,
+			int(elephant_scale * step * scaling_factor),
 			times
 		)
 		for step in [0.5, 0.75, 1.0, 2.0, 3.0]
 		for NumBlock in range(5, 31, 5)
 		for NumberFirstPL in range(50, 251, 50)
 		for K_ratio in [0.1, 0.2, 0.3, 0.4, 0.5]
-		for mice_scale in [10]
-		for elephant_scale in [100]
+		for mice_scale in [0.1]
+		for elephant_scale in [1.0]
 		for mice_ratio, elephant_ratio in [(75, 25), (0, 100)]
 		for times in [100]
 	]
 
-	outputfile = open("result_tmp.csv", "w")
+	outputfile = open("../EVALUATION/result_tmp.csv", "w")
 	outputfile.write("GlobalEpsilon,NumberFirstPL,NumBlock,NumAtkPL,mice_ratio,mice_scale,elephant_ratio,elephant_scale,result\n")
 	i = 0
 	for arg in args:
