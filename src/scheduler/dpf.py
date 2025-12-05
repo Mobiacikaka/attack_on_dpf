@@ -21,6 +21,7 @@ class DPFScheduler:
 
 		self.TimeSlot: int = 0
 
+		## Timeslot, Pipeline
 		self.WaitingPipelineList: dict[int, Pipeline] = {}
 		self.CompletedPipelineList: list[int] = []
 
@@ -34,14 +35,20 @@ class DPFScheduler:
 		self.ConsumBudget.append(0)
 
 	def AddToWaitingList(self, pl: Pipeline) -> None:
-		## Tuple List
-		## (time, Pipeline)
-		## ...
-		## (time, Pipeline)
+		"""
+		Add pipeline to waiting list
+		Tuple List
+		(time, Pipeline)
+		...
+		(time, Pipeline)
+		"""
 		self.WaitingPipelineList[self.TimeSlot] = pl
 		pl.SetTimeSlot(self.TimeSlot)
 
 	def OnPipelineArrival(self, pl: Pipeline) -> None:
+		"""
+		Release privacy budget block into the UnalloBudget list
+		"""
 		for block_index in range(self.NumBlock):
 			if pl.DemandList[block_index] > 0:
 				UnallocatedBudget_j = self.GlobalBudget[block_index] - self.ConsumBudget[block_index]
@@ -153,3 +160,6 @@ class DPFScheduler:
 
 	def GetBudgetStep(self) -> int:
 		return self.GlobalEpsilon // self.NumberFirstPL
+
+	def GetWaitingPipelineList(self) -> dict:
+		return self.WaitingPipelineList
