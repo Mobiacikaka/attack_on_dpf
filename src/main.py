@@ -1,8 +1,9 @@
 import config
 from simulator import Simulator
-from attacker.lbfta import Attacker as LBFTAttacker
 from attacker.lba import Attacker as LBAttacker
 from attacker.dsa import Attacker as DSAttacker
+from attacker.sbfs import Attacker as SBFSAttacker
+from attacker.naive import Attacker as NaiveAttacker
 import numpy
 
 def main(
@@ -27,9 +28,11 @@ def main(
 
 	config.PrintConfig()
 
-	LBFAT_result_list = []
-	DSA_result_list = []
-	LBA_result_list = []
+	result_list_0 = []
+	result_list_1 = []
+	result_list_2 = []
+	result_list_3 = []
+	result_list_4 = []
 
 	for _ in range(config.times):
 		simulator.GeneratePipelineList(
@@ -39,27 +42,41 @@ def main(
 			elephant_scale=config.elephant_scale,
 		)
 
-		# if verbose == True:
-		# 	print("\n##### DSA #####")
-		# simulator.SetAttacker(DSAttacker)
-		# simulator.StartSimulation()
-		# DSA_result_list.append(simulator.GetSimulationResult())
-
-		# if verbose == True:
-		# 	print("\n##### LBFTAttacker #####")
-		# simulator.SetAttacker(LBFTAttacker)
-		# simulator.StartSimulation()
-		# LBFAT_result_list.append(simulator.GetSimulationResult())
+		if verbose == True:
+			print("\n##### Sequential Heuristic #####")
+		attacker = DSAttacker(NumAtkPL)
+		simulator.SetAttacker(attacker)
+		simulator.StartSimulation()
+		result_list_0.append(simulator.GetSimulationResult())
 
 		if verbose == True:
-			print("\n##### LBAttacker #####")
-		simulator.SetAttacker(LBAttacker)
+			print("\n##### Threshold Triggered #####")
+		attacker = LBAttacker(NumAtkPL)
+		simulator.SetAttacker(attacker)
 		simulator.StartSimulation()
-		LBA_result_list.append(simulator.GetSimulationResult())
+		result_list_1.append(simulator.GetSimulationResult())
 
-	# print("DSA:", numpy.mean(DSA_result_list))
-	# print("LBFAT\t", numpy.mean(LBFAT_result_list))
-	print("LBA:", numpy.mean(LBA_result_list))
+		if verbose == True:
+			print("\n##### Segmented Brute-Force #####")
+		attacker = SBFSAttacker(NumAtkPL)
+		attacker.SetRegularPipelineList(simulator.GetRegularPipelineList())
+		simulator.SetAttacker(attacker)
+		simulator.StartSimulation()
+		result_list_2.append(simulator.GetSimulationResult())
+
+		if verbose == True:
+			print("\n##### Naive Greedy #####")
+		attacker = NaiveAttacker(NumAtkPL)
+		attacker.SetRegularPipelineList(simulator.GetRegularPipelineList())
+		simulator.SetAttacker(attacker)
+		simulator.StartSimulation()
+		result_list_3.append(simulator.GetSimulationResult())
+
+	print("Sequential Heuristic:", numpy.mean(result_list_0), numpy.std(result_list_0))
+	print("Threshold-Triggered(Aggr+D-Thr):", numpy.mean(result_list_1), numpy.std(result_list_1))
+	print("Segmented Brute Force:", numpy.mean(result_list_2), numpy.std(result_list_2))
+	print("Naive Greedy:", numpy.mean(result_list_3), numpy.std(result_list_3))
+	# print("Random:", numpy.mean(result_list_4), numpy.std(result_list_4))
 
 if __name__ == '__main__':
 	main(
