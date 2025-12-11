@@ -14,6 +14,7 @@ class BasicAttacker:
 	def __init__(self, NumAtkPL: int) -> None:
 		self.NumAtkPL: int = NumAtkPL
 		self.AtkPipelineList = []
+		self.CheckFullyAllocationFlag = False
 
 	def AttackScheduler(self, scheduler: DPFScheduler) -> None | Pipeline:
 		"""
@@ -22,6 +23,18 @@ class BasicAttacker:
 
 		## DO NOTHING
 		return None
+
+	def CheckAllocation(self, scheduler: DPFScheduler, AtkPipeline: Pipeline, AtkTimeslot):
+		scheduler = copy.deepcopy(scheduler)
+		scheduler.AddToWaitingList(AtkPipeline)
+		scheduler.OnPipelineArrival(AtkPipeline)
+
+		# print(AtkPipeline.GetTimeSlot(), AtkTimeslot)
+		# print(AtkPipeline.DemandList)
+		assert(AtkPipeline.GetTimeSlot() == AtkTimeslot)
+
+		FinishedPipelineList = scheduler.OnSchedulerTimer()
+		assert(AtkTimeslot in FinishedPipelineList)
 
 	## Public Functions
 	def GetAtkTimeslotList(self) -> list[int]:
@@ -39,6 +52,14 @@ class BasicAttacker:
 				NumReceiveAllocation += 1
 				# print(f"Atk{AtkPipeline.TimeSlot}", AtkPipeline.DemandList)
 		# print(self.NumAtkPL, '/', NumReceiveAllocation)
+		self.NumReceiveAllocation = NumReceiveAllocation
+		if self.CheckFullyAllocationFlag:
+			FullyAllocationFlag = self.NumReceiveAllocation == self.NumAtkPL
+			if not FullyAllocationFlag:
+				AtkTimeslotList = [x.TimeSlot for x in self.AtkPipelineList]
+				# print("Not fully allocated", AtkTimeslotList, FinishedPipelineList)
+				# print("Interset", set(AtkTimeslotList) & set(FinishedPipelineList))
+			assert(FullyAllocationFlag == True)
 		return budget_sum
 
 	def SetRegularPipelineList(self):
@@ -51,13 +72,12 @@ class BasicAttacker:
 		Brute force search all the possible demand vector for adversary pipeline
 		Greedily choose a best one
 		"""
-		scheduler = copy.deepcopy(scheduler)
 		UnallocatedBudgetList = scheduler.GetUnallocatedBudgetList()
 		for block_index in range(config.NumBlock):
-			UnallocatedBudgetList[block_index] += config.GlobalEpsilon // config.NumberFirstPL
+			UnallocatedBudgetList[block_index] += scheduler.GetBudgetStep()
 
 		SortedWaitingPipelineList: list = scheduler.SortWaitingPipelineList()
-		RegularFlag = False
+		RegularFlag = False ## Indicate if exist regular pipeline can run
 
 		DemandList = []
 		for pipeline_index in SortedWaitingPipelineList:
@@ -84,6 +104,8 @@ class BasicAttacker:
 				else:
 					DemandList_tmp.append(UnallocatedBudgetList[block_index])
 
+			# print(regular_pipeline.DemandList, UnallocatedBudgetList)
+
 			if sum(DemandList_tmp) > sum(DemandList):
 				DemandList = DemandList_tmp
 
@@ -93,4 +115,5 @@ class BasicAttacker:
 		if not RegularFlag:
 			DemandList = UnallocatedBudgetList
 
-		return Pipeline(DemandList)
+		AtkPipeline = Pipeline(DemandList)
+		return AtkPipeline

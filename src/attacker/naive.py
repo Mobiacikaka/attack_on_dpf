@@ -9,6 +9,7 @@ class Attacker(BasicAttacker):
 	"""
 
 	def __init__(self, NumAtkPL: int) -> None:
+		super().__init__(NumAtkPL)
 		self.NumAtkPL = NumAtkPL
 		self.AtkPipelineList = []
 		self.AtkTimeslotList = []

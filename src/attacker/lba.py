@@ -21,6 +21,7 @@ class Attacker(BasicAttacker):
 	THRESHOLD = config.GlobalEpsilon / config.NumAtkPL
 
 	def __init__(self, NumAtkPL: int) -> None:
+		super().__init__(NumAtkPL)
 		self.NumAtkPL = NumAtkPL
 		self.AtkPipelineList = []
 		PrintThreshold(self.THRESHOLD)
@@ -50,8 +51,6 @@ class Attacker(BasicAttacker):
 		UnallocatedBudgetList = scheduler.GetUnallocatedBudgetList()
 		## Return None when the minimum budget is below threshold
 		minbudget = min(UnallocatedBudgetList)
-		## Find Meidan instead of Minimum
-		medianbudget = int(statistics.median(UnallocatedBudgetList))
 
 		if scheduler.GetTimeslot() + self.NumAtkPL - len(self.AtkPipelineList) >= scheduler.GetNumberFirstPL():
 			AtkPipeline = Pipeline([scheduler.GetBudgetStep()] * scheduler.GetNumberBlock())
@@ -59,16 +58,10 @@ class Attacker(BasicAttacker):
 			return AtkPipeline
 
 		## Budget Threshold
-		# budget_threshold = scheduler.GetBudgetStep() * self.THRESHOLD_COEFFICIENT
-		if minbudget < self.THRESHOLD * 0.5: # * self.ThresholdAdjustmentParameter(scheduler):
+		if minbudget < self.THRESHOLD * self.ThresholdAdjustmentParameter(scheduler):
 			return None
 		else:
-			# DemandList = [minbudget] * scheduler.GetNumberBlock()
 			DemandList = [minbudget + scheduler.GetBudgetStep()] * scheduler.GetNumberBlock()
-			# DemandList = UnallocatedBudgetList
-			# for i in range(scheduler.GetNumberBlock()):
-			# 	if DemandList[i] > medianbudget + scheduler.GetBudgetStep():
-			# 		DemandList[i] = medianbudget + scheduler.GetBudgetStep()
 			AtkPipeline = Pipeline(DemandList)
 			self.AtkPipelineList.append(AtkPipeline)
 			return AtkPipeline
