@@ -7,3 +7,5 @@ src/result*.csv
 OLDRESULT/*
 utils/figs/*
 *.bak
+*/__pycache__
+*/__pycache__/*
