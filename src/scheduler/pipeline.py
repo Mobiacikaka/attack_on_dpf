@@ -1,3 +1,4 @@
+import copy
 
 class Pipeline:
 	def __init__(self, DemandList: list[int]=[]) -> None:
@@ -6,7 +7,7 @@ class Pipeline:
 		self.DemandList: list[int] = [] ## Demands for N data blocks
 
 		self.NumBlock = len(DemandList)
-		self.DemandList = DemandList
+		self.DemandList = copy.deepcopy(DemandList)
 
 	def SetTimeSlot(self, timeslot: int) -> None:
 		assert(timeslot >= 0)
