@@ -1,9 +1,12 @@
 import config
+from scheduler.pipeline import Pipeline
 from simulator import Simulator
 from attacker.lba import Attacker as LBAttacker
 from attacker.dsa import Attacker as DSAttacker
 from attacker.sbfs import Attacker as SBFSAttacker
 from attacker.naive import Attacker as NaiveAttacker
+from attacker.random import Attacker as RandomAttacker
+from scheduler.dpf import DPFScheduler
 import numpy
 
 def main(
@@ -72,11 +75,19 @@ def main(
 		simulator.StartSimulation()
 		result_list_3.append(simulator.GetSimulationResult())
 
+		if verbose == True:
+			print("\n##### Naive Greedy #####")
+		attacker = RandomAttacker(NumAtkPL)
+		attacker.SetRegularPipelineList(simulator.GetRegularPipelineList())
+		simulator.SetAttacker(attacker)
+		simulator.StartSimulation()
+		result_list_4.append(simulator.GetSimulationResult())
+
 	print("Sequential Heuristic:", numpy.mean(result_list_0), numpy.std(result_list_0))
 	print("Threshold-Triggered(Aggr+D-Thr):", numpy.mean(result_list_1), numpy.std(result_list_1))
 	print("Segmented Brute Force:", numpy.mean(result_list_2), numpy.std(result_list_2))
 	print("Naive Greedy:", numpy.mean(result_list_3), numpy.std(result_list_3))
-	# print("Random:", numpy.mean(result_list_4), numpy.std(result_list_4))
+	print("Random:", numpy.mean(result_list_4), numpy.std(result_list_4))
 
 if __name__ == '__main__':
 	main(
