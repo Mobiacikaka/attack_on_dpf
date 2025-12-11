@@ -45,12 +45,12 @@ def main(
 			elephant_scale=config.elephant_scale,
 		)
 
-		if verbose == True:
-			print("\n##### Sequential Heuristic #####")
-		attacker = DSAttacker(NumAtkPL)
-		simulator.SetAttacker(attacker)
-		simulator.StartSimulation()
-		result_list_0.append(simulator.GetSimulationResult())
+		# if verbose == True:
+		# 	print("\n##### Sequential Heuristic #####")
+		# attacker = DSAttacker(NumAtkPL)
+		# simulator.SetAttacker(attacker)
+		# simulator.StartSimulation()
+		# result_list_0.append(simulator.GetSimulationResult())
 
 		if verbose == True:
 			print("\n##### Threshold Triggered #####")
@@ -83,7 +83,7 @@ def main(
 		simulator.StartSimulation()
 		result_list_4.append(simulator.GetSimulationResult())
 
-	print("Sequential Heuristic:", numpy.mean(result_list_0), numpy.std(result_list_0))
+	# print("Sequential Heuristic:", numpy.mean(result_list_0), numpy.std(result_list_0))
 	print("Threshold-Triggered(Aggr+D-Thr):", numpy.mean(result_list_1), numpy.std(result_list_1))
 	print("Segmented Brute Force:", numpy.mean(result_list_2), numpy.std(result_list_2))
 	print("Naive Greedy:", numpy.mean(result_list_3), numpy.std(result_list_3))
