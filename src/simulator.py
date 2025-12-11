@@ -1,3 +1,4 @@
+import random
 from scheduler.dpf import DPFScheduler
 from scheduler.pipeline import Pipeline
 from attacker.attacker import BasicAttacker
@@ -17,7 +18,7 @@ class Simulator:
 		self.GlobalEpsilon: int = GlobalEpsilon
 		self.NumberFirstPL: int = NumberFirstPL
 		self.NumBlock: int = NumBlock
-		self.PipelineList: list = PipelineList
+		self.PipelineList: list[Pipeline] = PipelineList
 		self.NumAtkPL: int = NumAtkPL
 		self.verbose: bool = verbose
 		self.AttackerClass: type[BasicAttacker] = BasicAttacker
@@ -34,6 +35,7 @@ class Simulator:
 	) -> None:
 		"""
 		Generate Synthetic Pipeline
+			using exponential distribution
 		"""
 		assert(mice_ratio + elephant_ratio == 100)
 		assert(mice_scale < elephant_scale)
@@ -77,6 +79,43 @@ class Simulator:
 		## Regular Pipelines
 		self.PipelineList = PipelineList
 
+	def GeneratePipelineList2(
+		self,
+		mice_ratio=0,
+		elephant_ratio=100,
+		mice_scale=10,
+		elephant_scale=100,
+	) -> None:
+		n_mice, n_elep, eps_mice, eps_elep = mice_ratio, elephant_ratio, mice_scale, elephant_scale
+
+		pls: list[Pipeline] = []
+		total_n_pls = n_mice + n_elep
+
+		for i in range(total_n_pls):
+			remain_pls = total_n_pls - i
+			rnd = random.randrange(0, remain_pls)
+			eps_total = 0
+
+			if rnd < n_mice:
+				eps_total = eps_mice
+				n_mice -= 1
+			else:
+				eps_total = eps_elep
+				n_elep -= 1
+
+			step = eps_total / 100
+			pl = []
+			for _ in range(self.NumBlock):
+				values = numpy.arange(eps_total-step*25, eps_total+step*25, step=step)
+				if values.size == 0:
+					demand = 0
+				else:
+					demand = numpy.random.choice(values)
+				pl.append(demand)
+			pls.append(Pipeline(pl))
+
+		self.PipelineList = pls
+
 	def StartSimulation(self) -> None:
 		if self.PipelineList == []:
 			self.GeneratePipelineList()
@@ -92,8 +131,10 @@ class Simulator:
 			print("\n---- Pipeline Scheduling ----")
 
 		FinishedPipelineList: list[int] = []
+		assert(len(self.PipelineList) >= self.NumberFirstPL)
+		regular_pipeline_index = 0
 
-		for Pipeline in self.PipelineList:
+		while scheduler.GetTimeslot() < self.NumberFirstPL:
 			## First Try to attack
 			AtkPipeline = attacker.AttackScheduler(scheduler=scheduler)
 			if AtkPipeline != None:
@@ -106,6 +147,8 @@ class Simulator:
 					pass
 				continue
 
+			Pipeline = self.PipelineList[regular_pipeline_index]
+			regular_pipeline_index += 1
 			scheduler.AddToWaitingList(Pipeline)
 			scheduler.OnPipelineArrival(Pipeline)
 			FinishedPipelineList += scheduler.OnSchedulerTimer()
