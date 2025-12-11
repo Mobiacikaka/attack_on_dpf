@@ -1,5 +1,15 @@
 import subprocess
 
+def getresult(target_attack: str, lines: list[str]):
+	for i in range(len(lines)):
+		if target_attack in lines[i]:
+			result = lines[i].split(":")[1]
+			mean = result.split(" ")[1]
+			std = result.split(" ")[2]
+			return mean, std
+	assert(0)
+	return "", ""
+
 def run():
 	scaling_factor = 1000
 	args = [
@@ -24,9 +34,26 @@ def run():
 		for times in [100]
 	]
 
-	outputfile = open("../EVALUATION/result_tmp.csv", "w")
-	outputfile.write("GlobalEpsilon,NumberFirstPL,NumBlock,NumAtkPL,mice_ratio,mice_scale,elephant_ratio,elephant_scale,result\n")
-	i = 0
+	outputfile = open("../EVALUATION/evaluation.csv", "w")
+	header = ""
+	header += "GlobalEpsilon,"
+	header += "NumberFirstPL,"
+	header += "NumBlock,"
+	header += "NumAtkPL,"
+	header += "mice_ratio,"
+	header += "mice_scale,"
+	header += "elephant_ratio,"
+	header += "elephant_scale,"
+	header += "TTA mean,"
+	header += "TTA std,"
+	header += "SBFS mean,"
+	header += "SBFS std,"
+	header += "Naive mean,"
+	header += "Naive std,"
+	header += "Random mean,"
+	header += "Random std"
+	outputfile.write(f"{header}\n")
+	i = 1
 	for arg in args:
 		input_str = ""
 		for par in arg:
@@ -36,8 +63,12 @@ def run():
 		i += 1
 		print(input_str)
 
-		result = subprocess.run(["python", "main.py"], input=input_str, capture_output=True, text=True)
-		result = result.stdout.split("\n")[-2].split(" ")[1]
+		output = subprocess.run(["python", "main.py"], input=input_str, capture_output=True, text=True)
+		# result = result.stdout.split("\n")[-2].split(" ")[1]
+		result_1: tuple[str, str] = getresult("Threshold", output.stdout.split("\n"))
+		result_2: tuple[str, str] = getresult("Segmented", output.stdout.split("\n"))
+		result_3: tuple[str, str] = getresult("Naive", output.stdout.split("\n"))
+		result_4: tuple[str, str] = getresult("Random", output.stdout.split("\n"))
 		GlobalEpsilon, NumberFirstPL, NumBlock, NumAtkPL, mice_ratio, mice_scale, elephant_ratio, elephant_scale, times = arg
 		outputfile.write(f"{GlobalEpsilon},")
 		outputfile.write(f"{NumberFirstPL},")
@@ -47,5 +78,12 @@ def run():
 		outputfile.write(f"{mice_scale},")
 		outputfile.write(f"{elephant_ratio},")
 		outputfile.write(f"{elephant_scale},")
-		outputfile.write(f"{result}\n")
+		outputfile.write(f"{result_1[0]},")
+		outputfile.write(f"{result_1[1]},")
+		outputfile.write(f"{result_2[0]},")
+		outputfile.write(f"{result_2[1]},")
+		outputfile.write(f"{result_3[0]},")
+		outputfile.write(f"{result_3[1]},")
+		outputfile.write(f"{result_4[0]},")
+		outputfile.write(f"{result_4[1]}\n")
 	outputfile.close()
