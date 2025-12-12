@@ -1,6 +1,7 @@
 #!/bin/python3
 
 import matplotlib.pyplot as plt
+import pandas
 
 plt.rcParams.update({
     # 'font.family': 'Times New Roman',  # 使用 Times 字体
@@ -16,73 +17,39 @@ plt.rcParams.update({
     'ps.fonttype': 42
 })
 
-def DrawK():
-	fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
+class Result:
+	def __init__(self) -> None:
+		self.filename:str = ""
 
-	"""
-	M=10, N=100, epsilon=100.0, (step=1.0)
-	mice_ratio=75, mice_scale=0.1
-	elephant_ratio=25, elephant_scale=1.0
-	"""
-	M, N, E, MR, MS, ER, ES = 10, 100, 100, 75, 10, 25, 100
-	X_list: list = [0.1, 0.2, 0.3, 0.4, 0.5]
-	## TTA
-	Y1_list: list = [0.58811  , 0.6755760, 0.747979 , 0.808875 , 0.855238 ]
-	## SBFS
-	Y2_list: list = [0.7004834, 0.7442992, 0.8058750, 0.8576998, 0.8862787]
-	## Naive Greedy
-	Y3_list: list = [0.539633 , 0.4062988, 0.6096552, 0.7069462, 0.7374655]
-	## Random
-	Y4_list: list = [0.0311414, 0.0645959, 0.1010515, 0.1373639, 0.1683657]
+	def ReadCsvFile(self, filename: str):
+		self.filename = filename
+		self.dataframe = pandas.read_csv(self.filename)
 
-	axes[0].plot(X_list, Y1_list, marker='s', linestyle='solid', color='green', label='TTA')
-	axes[0].plot(X_list, Y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
-	axes[0].plot(X_list, Y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
-	axes[0].plot(X_list, Y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
-	axes[0].set_title("Mice 75%, Elephant 25%")
+	def GetResult(
+		self,
+		GlobalEpsilon,
+		NumberFirstPL,
+		NumBlock,
+		NumAtkPL,
+		mice_ratio,
+		mice_scale,
+		elephant_ratio,
+		elephant_scale,
+		result_name,
+		mean_or_std,
+	):
+		row = self.dataframe[
+			(self.dataframe["GlobalEpsilon"] == GlobalEpsilon) &
+			(self.dataframe["NumberFirstPL"] == NumberFirstPL) &
+			(self.dataframe["NumBlock"] == NumBlock) &
+			(self.dataframe["NumAtkPL"] == NumAtkPL) &
+			(self.dataframe["mice_ratio"] == mice_ratio) &
+			(self.dataframe["mice_scale"] == mice_scale) &
+			(self.dataframe["elephant_ratio"] == elephant_ratio) &
+			(self.dataframe["elephant_scale"] == elephant_scale)
+		]
 
-	"""
-	M=10, N=100, epsilon=100.0, (step=1.0)
-	mice_ratio=100, mice_scale=10
-	elephant_ratio=0, elephant_scale=100
-	"""
-
-	M, N, E, MR, MS, ER, ES = 10, 100, 100, 100, 10, 0, 100
-	X_list: list = [0.1, 0.2, 0.3, 0.4, 0.5]
-	## TTA
-	Y1_list: list = [0.143893 , 0.3019400, 0.440892 , 0.568318 , 0.6956540]
-	## SBFS
-	Y2_list: list = [0.3011267, 0.5465031, 0.7373412, 0.8678937, 0.9386852]
-	## GREEDY
-	Y3_list: list = [0.1284858, 0.1740471, 0.2594669, 0.3544396, 0.4600593]
-	## RANDOM
-	Y4_list: list = [0.0912589, 0.1854378, 0.2754931, 0.3687428, 0.4616255]
-
-	axes[1].plot(X_list, Y1_list, marker='s', linestyle='solid', color='green', label='TTA')
-	axes[1].plot(X_list, Y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
-	axes[1].plot(X_list, Y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
-	axes[1].plot(X_list, Y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
-	axes[1].set_title("Mice 0%, Elephant 100%")
-
-	plt.xlim()
-	plt.ylim(0.0, 1.0)
-
-	for ax in axes:
-		ax.grid()
-	fig.supxlabel("K/N")
-	fig.supylabel("BCR") ## Budget Capture Ratio
-
-	handles, labels = axes[0].get_legend_handles_labels()
-	fig.legend(handles, labels,
-		loc='lower center',
-		bbox_to_anchor=(0.5, 1.02),
-		ncol=4,
-		frameon=False
-	)
-	plt.tight_layout()
-	plt.savefig(f"./figs/Varying K.pdf", bbox_inches='tight')
-	# plt.show()
-	plt.clf()
+		return row[f"{result_name} {mean_or_std}"].iloc[0]
 
 def DrawM():
 	fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
@@ -152,73 +119,243 @@ def DrawM():
 	# plt.show()
 	plt.clf()
 
-def DrawN():
-	fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
+class Paintist:
+	def __init__(self, filename: str) -> None:
+		self.result = Result()
+		self.result.ReadCsvFile(filename)
+		self.saveflag = True
+		self.showflag = False
 
-	"""
-	K=30, E(epsilon)
-	mice ratio 75
-	elephant ratio 25
-	"""
-	K, M, E, MR, MS, ER, ES = 0.3, 10, 100, 75, 10, 25, 100
-	X_list: list = [50, 100, 150, 200, 250]
-	## TTA
-	Y1_list: list = [0.743842, 0.747979, 0.7572273, 0.760004, 0.7621608]
-	## SBFS
-	Y2_list: list = [0.8485134, 0.8510804, 0.851185, 0.84685035, 0.84671528]
-	## GREEDY
-	Y3_list: list = [0.655906, 0.6096552, 0.60798547, 0.59823375, 0.59255144]
-	## RANDOM
-	Y4_list: list = [0.1016874, 0.1010515, 0.09801714, 0.100626, 0.10105096]
+	def EvaluateK(self):
+		fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
+		x_list: list = [0.1, 0.2, 0.3, 0.4, 0.5]
 
-	axes[0].plot(X_list, Y1_list, marker='s', linestyle='solid', color='green', label='TTA')
-	axes[0].plot(X_list, Y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
-	axes[0].plot(X_list, Y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
-	axes[0].plot(X_list, Y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
-	axes[0].set_title("Mice 75%, Elephant 25%")
+		def getresultlist(attack_name: str, mice: tuple[int, int], elephant: tuple[int, int]):
+			y_list = []
+			for i in range(len(x_list)):
+				K = int(x_list[i] * 100)
+				y_list.append(
+					self.result.GetResult(
+						100000,      # GlobalEpsilon
+						100,         # NumberFirstPL
+						10,          # NumBlock
+						K,           # NumAtkPL
+						mice[0],     # mice_ratio
+						mice[1],     # mice_scale
+						elephant[0], # elephant_ratio
+						elephant[1], # elephant_scale
+						attack_name, # attack method name
+						'mean',      # mean or std
+					)
+				)
+			return y_list
 
-	"""
-	K=30, E(epsilon)
-	mice ratio 75
-	elephant ratio 25
-	"""
+		mice: tuple = (75, 100)
+		elephant: tuple = (25, 1000)
+		y1_list: list = getresultlist('TTA', mice, elephant)
+		y2_list: list = getresultlist('SBFS', mice, elephant)
+		y3_list: list = getresultlist('Naive', mice, elephant)
+		y4_list: list = getresultlist('Random', mice, elephant)
 
-	K, N, E, MR, MS, ER, ES = 30, 100, 100, 0, 10, 100, 100
-	X_list: list = [50, 100, 150, 200, 250]
-	## TTA
-	Y1_list: list = [0.44422, 0.440892, 0.4335847, 0.429692, 0.4237032]
-	## SBFS
-	Y2_list: list = [0.7297192, 0.7218023, 0.71315606, 0.70753995, 0.70487884]
-	## GREEDY
-	Y3_list: list = [0.2886086, 0.2594669, 0.25968613, 0.27144265, 0.26923692]
-	## RANDOM
-	Y4_list: list = [0.2675436, 0.2754931, 0.28049146, 0.28543515, 0.28869192]
+		axes[0].plot(x_list, y1_list, marker='s', linestyle='solid', color='green', label='TTA')
+		axes[0].plot(x_list, y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
+		axes[0].plot(x_list, y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
+		axes[0].plot(x_list, y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
+		axes[0].set_title("Mice 75%, Elephant 25%")
 
-	axes[1].plot(X_list, Y1_list, marker='s', linestyle='solid', color='green', label='TTA')
-	axes[1].plot(X_list, Y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
-	axes[1].plot(X_list, Y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
-	axes[1].plot(X_list, Y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
-	axes[1].set_title("Mice 0%, Elephant 100%")
+		mice: tuple = (0, 100)
+		elephant: tuple = (100, 1000)
+		y1_list: list = getresultlist('TTA', mice, elephant)
+		y2_list: list = getresultlist('SBFS', mice, elephant)
+		y3_list: list = getresultlist('Naive', mice, elephant)
+		y4_list: list = getresultlist('Random', mice, elephant)
 
-	plt.xlim()
-	plt.ylim(0.0, 1.0)
+		axes[1].plot(x_list, y1_list, marker='s', linestyle='solid', color='green', label='TTA')
+		axes[1].plot(x_list, y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
+		axes[1].plot(x_list, y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
+		axes[1].plot(x_list, y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
+		axes[1].set_title("Mice 0%, Elephant 100%")
 
-	for ax in axes:
-		ax.grid()
-	fig.supxlabel("M")
-	fig.supylabel("BCR") ## Budget Capture Ratio
+		plt.xlim()
+		plt.ylim(0.0, 1.0)
 
-	handles, labels = axes[0].get_legend_handles_labels()
-	fig.legend(handles, labels,
-		loc='lower center',
-		bbox_to_anchor=(0.5, 1.02),
-		ncol=4,
-		frameon=False
-	)
-	plt.tight_layout()
-	plt.savefig(f"figs/Varying N.pdf", bbox_inches='tight')
-	# plt.show()
-	plt.clf()
+		for ax in axes:
+			ax.grid()
+		fig.supxlabel("K/N")
+		fig.supylabel("BCR") ## Budget Capture Ratio
+
+		handles, labels = axes[0].get_legend_handles_labels()
+		fig.legend(handles, labels,
+			loc='lower center',
+			bbox_to_anchor=(0.5, 1.02),
+			ncol=4,
+			frameon=False
+		)
+		plt.tight_layout()
+		if self.saveflag:
+			plt.savefig(f"./figs/Varying K.pdf", bbox_inches='tight')
+		if self.showflag:
+			plt.show()
+		plt.clf()
+
+	def EvaluateN(self):
+		fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
+		x_list: list = [50, 100, 150, 200, 250]
+
+		def getresultlist(attack_name: str, mice: tuple[int, float], elephant: tuple[int, float]):
+			y_list = []
+			for i in range(len(x_list)):
+				N = x_list[i]
+				K = int(N * 0.3)
+				EPS = 1000 * N
+				try:
+					y_list.append(
+						self.result.GetResult(
+							EPS,         # GlobalEpsilon
+							N,           # NumberFirstPL
+							10,          # NumBlock
+							K,           # NumAtkPL
+							mice[0],     # mice_ratio
+							mice[1],     # mice_scale
+							elephant[0], # elephant_ratio
+							elephant[1], # elephant_scale
+							attack_name, # attack method name
+							'mean',      # mean or std
+						)
+					)
+				except:
+					print(x_list[i])
+					exit()
+			return y_list
+
+		mice: tuple = (75, 100)
+		elephant: tuple = (25, 1000)
+		y1_list: list = getresultlist('TTA', mice, elephant)
+		y2_list: list = getresultlist('SBFS', mice, elephant)
+		y3_list: list = getresultlist('Naive', mice, elephant)
+		y4_list: list = getresultlist('Random', mice, elephant)
+
+		axes[0].plot(x_list, y1_list, marker='s', linestyle='solid', color='green', label='TTA')
+		axes[0].plot(x_list, y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
+		axes[0].plot(x_list, y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
+		axes[0].plot(x_list, y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
+		axes[0].set_title("Mice 75%, Elephant 25%")
+
+		mice: tuple = (0, 100)
+		elephant: tuple = (100, 1000)
+		y1_list: list = getresultlist('TTA', mice, elephant)
+		y2_list: list = getresultlist('SBFS', mice, elephant)
+		y3_list: list = getresultlist('Naive', mice, elephant)
+		y4_list: list = getresultlist('Random', mice, elephant)
+
+		axes[1].plot(x_list, y1_list, marker='s', linestyle='solid', color='green', label='TTA')
+		axes[1].plot(x_list, y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
+		axes[1].plot(x_list, y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
+		axes[1].plot(x_list, y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
+		axes[1].set_title("Mice 0%, Elephant 100%")
+
+		plt.xlim()
+		plt.ylim(0.0, 1.0)
+
+		for ax in axes:
+			ax.grid()
+		fig.supxlabel("N")
+		fig.supylabel("BCR") ## Budget Capture Ratio
+
+		handles, labels = axes[0].get_legend_handles_labels()
+		fig.legend(handles, labels,
+			loc='lower center',
+			bbox_to_anchor=(0.5, 1.02),
+			ncol=4,
+			frameon=False
+		)
+		plt.tight_layout()
+		if self.saveflag:
+			plt.savefig(f"./figs/Varying N.pdf", bbox_inches='tight')
+		if self.showflag:
+			plt.show()
+		plt.clf()
+
+	def EvaluateM(self):
+		fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
+		x_list: list = [5, 10, 15, 20, 25, 30]
+
+		def getresultlist(attack_name: str, mice: tuple[int, float], elephant: tuple[int, float]):
+			y_list = []
+			for i in range(len(x_list)):
+				N = 100
+				K = int(N * 0.3)
+				EPS = 1000 * N
+				try:
+					y_list.append(
+						self.result.GetResult(
+							EPS,         # GlobalEpsilon
+							N,           # NumberFirstPL
+							x_list[i],   # NumBlock
+							K,           # NumAtkPL
+							mice[0],     # mice_ratio
+							mice[1],     # mice_scale
+							elephant[0], # elephant_ratio
+							elephant[1], # elephant_scale
+							attack_name, # attack method name
+							'mean',      # mean or std
+						)
+					)
+				except:
+					print(x_list[i])
+					exit()
+			return y_list
+
+		mice: tuple = (75, 100)
+		elephant: tuple = (25, 1000)
+		y1_list: list = getresultlist('TTA', mice, elephant)
+		y2_list: list = getresultlist('SBFS', mice, elephant)
+		y3_list: list = getresultlist('Naive', mice, elephant)
+		y4_list: list = getresultlist('Random', mice, elephant)
+
+		axes[0].plot(x_list, y1_list, marker='s', linestyle='solid', color='green', label='TTA')
+		axes[0].plot(x_list, y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
+		axes[0].plot(x_list, y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
+		axes[0].plot(x_list, y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
+		axes[0].set_title("Mice 75%, Elephant 25%")
+
+		mice: tuple = (0, 100)
+		elephant: tuple = (100, 1000)
+		y1_list: list = getresultlist('TTA', mice, elephant)
+		y2_list: list = getresultlist('SBFS', mice, elephant)
+		y3_list: list = getresultlist('Naive', mice, elephant)
+		y4_list: list = getresultlist('Random', mice, elephant)
+
+		axes[1].plot(x_list, y1_list, marker='s', linestyle='solid', color='green', label='TTA')
+		axes[1].plot(x_list, y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
+		axes[1].plot(x_list, y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
+		axes[1].plot(x_list, y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
+		axes[1].set_title("Mice 0%, Elephant 100%")
+
+		plt.xlim()
+		plt.ylim(0.0, 1.0)
+
+		for ax in axes:
+			ax.grid()
+		fig.supxlabel("M")
+		fig.supylabel("BCR") ## Budget Capture Ratio
+
+		handles, labels = axes[0].get_legend_handles_labels()
+		fig.legend(handles, labels,
+			loc='lower center',
+			bbox_to_anchor=(0.5, 1.02),
+			ncol=4,
+			frameon=False
+		)
+		plt.tight_layout()
+		if self.saveflag:
+			plt.savefig(f"./figs/Varying M.pdf", bbox_inches='tight')
+		if self.showflag:
+			plt.show()
+		plt.clf()
 
 if __name__ == '__main__':
-	DrawM()
+	p = Paintist('../EVALUATION/evaluation.csv')
+	p.EvaluateK()
+	p.EvaluateN()
+	p.EvaluateM()
