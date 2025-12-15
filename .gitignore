@@ -5,7 +5,7 @@ EVALUATION/*
 *.xlsx
 src/result*.csv
 OLDRESULT/*
-utils/figs/*
+utils/figs
 *.bak
 */__pycache__
 */__pycache__/*
