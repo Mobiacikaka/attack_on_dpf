@@ -49,82 +49,21 @@ class Result:
 			(self.dataframe["elephant_scale"] == elephant_scale)
 		]
 
-		return row[f"{result_name} {mean_or_std}"].iloc[0]
-
-def DrawM():
-	fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
-
-	"""
-	K=30, E(epsilon)
-	mice ratio 75
-	elephant ratio 25
-	"""
-	K, N, E, MR, MS, ER, ES = 30, 100, 100, 75, 10, 25, 100
-	X_list: list = [5, 10, 15, 20, 25, 30]
-	## TTA
-	Y1_list: list = [0.758102 , 0.747979 , 0.749895  , 0.752334  , 0.746631  , 0.753732  ]
-	## SBFS
-	Y2_list: list = [0.8292128, 0.8510804, 0.86946882, 0.8828019 , 0.89529508, 0.90321666]
-	## GREEDY
-	Y3_list: list = [0.6107828, 0.6096552, 0.61547754, 0.6185876 , 0.61370484, 0.62097277]
-	## RANDOM
-	Y4_list: list = [0.0990902, 0.1010515, 0.09968501, 0.09889975, 0.10119952, 0.10185223]
-
-	axes[0].plot(X_list, Y1_list, marker='s', linestyle='solid', color='green', label='TTA')
-	axes[0].plot(X_list, Y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
-	axes[0].plot(X_list, Y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
-	axes[0].plot(X_list, Y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
-	axes[0].set_title("Mice 75%, Elephant 25%")
-
-	"""
-	K=30, E(epsilon)
-	mice ratio 75
-	elephant ratio 25
-	"""
-
-	K, N, E, MR, MS, ER, ES = 30, 100, 100, 0, 10, 100, 100
-	X_list: list = [5, 10, 15, 20, 25, 30]
-	## TTA
-	Y1_list: list = [0.417298 , 0.440892 , 0.458123  , 0.475198 , 0.489821  , 0.497435  ]
-	## SBFS
-	Y2_list: list = [0.6539794, 0.7218023, 0.76990457, 0.8031399, 0.83788032, 0.86150137]
-	## GREEDY
-	Y3_list: list = [0.2744416, 0.2594669, 0.25728815, 0.2546375, 0.25363964, 0.24548976]
-	## RANDOM
-	Y4_list: list = [0.2803764, 0.2754931, 0.27446752, 0.2703381, 0.26739816, 0.26450936]
-
-	axes[1].plot(X_list, Y1_list, marker='s', linestyle='solid', color='green', label='TTA')
-	axes[1].plot(X_list, Y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
-	axes[1].plot(X_list, Y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
-	axes[1].plot(X_list, Y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
-	axes[1].set_title("Mice 0%, Elephant 100%")
-
-	plt.xlim()
-	plt.ylim(0.0, 1.0)
-
-	for ax in axes:
-		ax.grid()
-	fig.supxlabel("M")
-	fig.supylabel("BCR") ## Budget Capture Ratio
-
-	handles, labels = axes[0].get_legend_handles_labels()
-	fig.legend(handles, labels,
-		loc='lower center',
-		bbox_to_anchor=(0.5, 1.02),
-		ncol=4,
-		frameon=False
-	)
-	plt.tight_layout()
-	plt.savefig(f"figs/Varying M.pdf", bbox_inches='tight')
-	# plt.show()
-	plt.clf()
+		try:
+			res = row[f"{result_name} {mean_or_std}"].iloc[0]
+		except:
+			print(locals())
+			print(row.head())
+			exit()
+		return res
 
 class Paintist:
 	def __init__(self, filename: str) -> None:
 		self.result = Result()
 		self.result.ReadCsvFile(filename)
 		self.saveflag = True
-		self.showflag = False
+		self.showflag = True
+		self.scaling_factor = 1000
 
 	def EvaluateK(self):
 		fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
@@ -354,8 +293,88 @@ class Paintist:
 			plt.show()
 		plt.clf()
 
+	def EvaluateEPS(self):
+		result = Result()
+		result.ReadCsvFile('../EVALUATION/evaluation_eps.csv')
+		fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
+		x_list: list[float] = [0.5, 1.0, 2.0, 3.0]
+
+		def getresultlist(attack_name: str, mice: tuple, elephant: tuple):
+			y_list = []
+			for eps_fs in x_list:
+				N = 100
+				eps_g = int(eps_fs * N * 1000)
+				K = int(0.3 * N)
+				mscale = int(eps_fs * mice[1])
+				escale = int(eps_fs * elephant[1])
+				y_list.append(
+					self.result.GetResult(
+						eps_g,       # GlobalEpsilon
+						N,           # NumberFirstPL
+						10,          # NumBlock
+						K,           # NumAtkPL
+						mice[0],     # mice_ratio
+						mscale,      # mice_scale
+						elephant[0], # elephant_ratio
+						escale,      # elephant_scale
+						attack_name, # attack method name
+						'mean',      # mean or std
+					)
+				)
+			return y_list
+
+		mice: tuple = (75, self.scaling_factor*0.1)
+		elephant: tuple = (25, self.scaling_factor)
+		y1_list: list = getresultlist('TTA', mice, elephant)
+		y2_list: list = getresultlist('SBFS', mice, elephant)
+		y3_list: list = getresultlist('Naive', mice, elephant)
+		y4_list: list = getresultlist('Random', mice, elephant)
+
+		axes[0].plot(x_list, y1_list, marker='s', linestyle='solid', color='green', label='TTA')
+		axes[0].plot(x_list, y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
+		axes[0].plot(x_list, y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
+		axes[0].plot(x_list, y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
+		axes[0].set_title("Mice 75%, Elephant 25%")
+
+		mice: tuple = (0, 100)
+		elephant: tuple = (100, 1000)
+		y1_list: list = getresultlist('TTA', mice, elephant)
+		y2_list: list = getresultlist('SBFS', mice, elephant)
+		y3_list: list = getresultlist('Naive', mice, elephant)
+		y4_list: list = getresultlist('Random', mice, elephant)
+
+		axes[1].plot(x_list, y1_list, marker='s', linestyle='solid', color='green', label='TTA')
+		axes[1].plot(x_list, y2_list, marker='^', linestyle='-.', color='red', label='SBFS')
+		axes[1].plot(x_list, y3_list, marker='o', linestyle='-.', color='blue', label='Naive Greedy')
+		axes[1].plot(x_list, y4_list, marker='v', linestyle='dotted',  color='black', label='Random')
+		axes[1].set_title("Mice 0%, Elephant 100%")
+
+		plt.xlim()
+		plt.ylim(0.0, 1.0)
+
+		for ax in axes:
+			ax.grid()
+		fig.supxlabel(r"$\epsilon^{FS}$")
+		fig.supylabel("BCR") ## Budget Capture Ratio
+
+		handles, labels = axes[0].get_legend_handles_labels()
+		fig.legend(handles, labels,
+			loc='lower center',
+			bbox_to_anchor=(0.5, 1.02),
+			ncol=4,
+			frameon=False
+		)
+		plt.tight_layout()
+		if self.saveflag:
+			plt.savefig(f"./figs/Varying EPS_FS.pdf", bbox_inches='tight')
+		if self.showflag:
+			plt.show()
+		plt.clf()
+
+
 if __name__ == '__main__':
 	p = Paintist('../EVALUATION/evaluation.csv')
-	p.EvaluateK()
-	p.EvaluateN()
-	p.EvaluateM()
+	# p.EvaluateK()
+	# p.EvaluateN()
+	# p.EvaluateM()
+	p.EvaluateEPS()
