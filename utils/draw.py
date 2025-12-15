@@ -299,26 +299,22 @@ class Paintist:
 		fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
 		x_list: list[float] = [0.5, 1.0, 2.0, 3.0]
 
+		NumberFirstPL = 100
+		NumBlock = 10
+		K = 30
+
 		def getresultlist(attack_name: str, mice: tuple, elephant: tuple):
 			y_list = []
 			for eps_fs in x_list:
-				N = 100
-				eps_g = int(eps_fs * N * 1000)
-				K = int(0.3 * N)
+				GlobalEpsilon = int(eps_fs * NumberFirstPL * 1000)
 				mscale = int(eps_fs * mice[1])
 				escale = int(eps_fs * elephant[1])
 				y_list.append(
 					self.result.GetResult(
-						eps_g,       # GlobalEpsilon
-						N,           # NumberFirstPL
-						10,          # NumBlock
-						K,           # NumAtkPL
-						mice[0],     # mice_ratio
-						mscale,      # mice_scale
-						elephant[0], # elephant_ratio
-						escale,      # elephant_scale
-						attack_name, # attack method name
-						'mean',      # mean or std
+						GlobalEpsilon, NumberFirstPL, NumBlock, K,
+						mice[0], mscale,
+						elephant[0], escale,
+						attack_name, 'mean',
 					)
 				)
 			return y_list
