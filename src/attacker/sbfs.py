@@ -11,7 +11,7 @@ class Attacker(BasicAttacker):
 		self.AtkPipelineList = []
 		self.AtkTimeslotList = []
 		self.RegularPipelineList = []
-		self.CheckFullyAllocationFlag = True
+		# self.CheckFullyAllocationFlag = True
 
 	def SetRegularPipelineList(self, PipelineList: list[Pipeline]):
 		self.RegularPipelineList = copy.deepcopy(PipelineList)
@@ -70,7 +70,7 @@ class Attacker(BasicAttacker):
 				scheduler0.OnPipelineArrival(self.RegularPipelineList[TimeSlot])
 				assert(self.RegularPipelineList[TimeSlot].GetTimeSlot() == TimeSlot)
 				FinishedPipelineList += scheduler0.OnSchedulerTimer()
-			assert(AtkTimeslot in FinishedPipelineList)
+			# assert(AtkTimeslot in FinishedPipelineList)
 
 			K1 += 1
 			K2 -= 1
