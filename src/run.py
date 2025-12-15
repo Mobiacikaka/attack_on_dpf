@@ -38,10 +38,10 @@ def run():
 			int(elephant_scale * step * scaling_factor),
 			times
 		)
-		# for NumberFirstPL, step in [(50, 2), (100, 1), (200, 0.5), (400, 0.25)]
-		for step in [1.0]
+		for NumberFirstPL, step in [(40, 3), (60, 2), (120, 1), (160, 0.75), (240, 0.5)] #[(50, 2), (100, 1), (200, 0.5), (400, 0.25)]
+		# for step in [1.0]
 		for NumBlock in [10]# range(5, 31, 5)
-		for NumberFirstPL in [100]# range(50, 251, 50)
+		# for NumberFirstPL in [100]# range(50, 251, 50)
 		for K_ratio in [0.1, 0.2, 0.3, 0.4, 0.5]
 		for mice_scale in [0.1]
 		for elephant_scale in [1.0]
