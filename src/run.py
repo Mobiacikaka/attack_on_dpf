@@ -24,9 +24,10 @@ def run():
 			int(elephant_scale * step * scaling_factor),
 			times
 		)
-		for step in [0.5, 0.75, 1.0, 2.0, 3.0]
-		for NumBlock in range(5, 31, 5)
-		for NumberFirstPL in range(50, 251, 50)
+		# for NumberFirstPL, step in [(50, 2), (100, 1), (200, 0.5), (400, 0.25)]
+		for step in [1.0]
+		for NumBlock in [10]# range(5, 31, 5)
+		for NumberFirstPL in [100]# range(50, 251, 50)
 		for K_ratio in [0.1, 0.2, 0.3, 0.4, 0.5]
 		for mice_scale in [0.1]
 		for elephant_scale in [1.0]
@@ -34,24 +35,28 @@ def run():
 		for times in [100]
 	]
 
-	outputfile = open("../EVALUATION/evaluation.csv", "w")
+	outputfile = open("../EVALUATION/evaluation_defense.csv", "w")
+	column_list = [
+		"GlobalEpsilon,"
+		,"NumberFirstPL,"
+		,"NumBlock,"
+		,"NumAtkPL,"
+		,"mice_ratio,"
+		,"mice_scale,"
+		,"elephant_ratio,"
+		,"elephant_scale,"
+		,"TTA mean,"
+		,"TTA std,"
+		,"SBFS mean,"
+		,"SBFS std,"
+		,"Naive mean,"
+		,"Naive std,"
+		,"Random mean,"
+		,"Random std"
+	]
 	header = ""
-	header += "GlobalEpsilon,"
-	header += "NumberFirstPL,"
-	header += "NumBlock,"
-	header += "NumAtkPL,"
-	header += "mice_ratio,"
-	header += "mice_scale,"
-	header += "elephant_ratio,"
-	header += "elephant_scale,"
-	header += "TTA mean,"
-	header += "TTA std,"
-	header += "SBFS mean,"
-	header += "SBFS std,"
-	header += "Naive mean,"
-	header += "Naive std,"
-	header += "Random mean,"
-	header += "Random std"
+	for column_name in column_list:
+		header += column_name
 	outputfile.write(f"{header}\n")
 	i = 1
 	for arg in args:
