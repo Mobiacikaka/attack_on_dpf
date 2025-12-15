@@ -29,7 +29,7 @@ class DPFScheduler:
 			self.OnDataBlockCreation()
 
 		## Defense Flag
-		self.DefensiveFlag: bool = False
+		self.DefensiveFlag: bool = True
 
 	def OnDataBlockCreation(self) -> None:
 		self.GlobalBudget.append(self.GlobalEpsilon)
@@ -65,6 +65,16 @@ class DPFScheduler:
 		for block_index in range(self.NumBlock):
 			demandratio[block_index] = pl.DemandList[block_index] / self.GlobalBudget[block_index]
 		demandratio.sort(reverse=True)
+		if self.DefensiveFlag == True:
+			## Linear
+			demandratio = [x * pl.GetTimeSlot() / self.NumberFirstPL for x in demandratio]
+
+			## Exponential
+			# demandratio = [
+			# 	x * pow(0.5, self.TimeSlot - pl.GetTimeSlot())
+			# 	for x in demandratio
+			# ]
+
 		return demandratio
 
 	def GetPipelineFromList(self, timeslot: int) -> Pipeline:
