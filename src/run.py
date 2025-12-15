@@ -10,7 +10,21 @@ def getresult(target_attack: str, lines: list[str]):
 	assert(0)
 	return "", ""
 
+def ensure_clean():
+	dirty = subprocess.check_output(
+		["git", "status", "--porcelain"]
+	).decode().strip()
+	if dirty:
+		raise RuntimeError("Working tree is dirty. Please commit or stash.")
+
 def run():
+	dirty = subprocess.check_output(
+		["git", "status", "--porcelain"]
+	).decode().strip()
+	if dirty:
+		print("PLEASE COMMIT FIRST")
+		exit()
+
 	scaling_factor = 1000
 	args = [
 		(
@@ -68,7 +82,10 @@ def run():
 		i += 1
 		print(input_str)
 
-		output = subprocess.run(["python", "main.py"], input=input_str, capture_output=True, text=True)
+		ensure_clean()
+		output = subprocess.run(
+			["python", "main.py"], input=input_str, capture_output=True, text=True,
+		)
 		# result = result.stdout.split("\n")[-2].split(" ")[1]
 		result_1: tuple[str, str] = getresult("Threshold", output.stdout.split("\n"))
 		result_2: tuple[str, str] = getresult("Segmented", output.stdout.split("\n"))
