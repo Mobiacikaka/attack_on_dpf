@@ -49,7 +49,7 @@ def run():
 		for times in [100]
 	]
 
-	outputfile = open("../EVALUATION/evaluation_defense.csv", "w")
+	outputfile = open("../EVALUATION/evaluation_eps.csv", "w")
 	column_list = [
 		"GlobalEpsilon,"
 		,"NumberFirstPL,"

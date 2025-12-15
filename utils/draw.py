@@ -445,4 +445,5 @@ if __name__ == '__main__':
 	# p.EvaluateK()
 	# p.EvaluateN()
 	# p.EvaluateM()
-	p.EvaluateDefense()
+	p.EvaluateEPS()
+	# p.EvaluateDefense()
