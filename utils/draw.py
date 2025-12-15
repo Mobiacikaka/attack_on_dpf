@@ -375,34 +375,29 @@ class Paintist:
 		result_defense = Result()
 		result_defense.ReadCsvFile('../EVALUATION/evaluation_defense.csv')
 		fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
-		x_list: list[float] = [0.5, 1.0, 2.0, 3.0]
+		x_list: list = [0.1, 0.2, 0.3, 0.4, 0.5]
+
+		NumberFirstPL = 100
+		NumBlock = 10
+		Epsilon = 1.0
+		GlobalEpsilon = int(NumberFirstPL * Epsilon * self.scaling_factor)
 
 		def getresultlist(attack_name: str, mice: tuple, elephant: tuple, result=self.result):
 			y_list = []
-			for eps_fs in x_list:
-				N = 100
-				eps_g = int(eps_fs * N * 1000)
-				K = int(0.3 * N)
-				mscale = int(eps_fs * mice[1])
-				escale = int(eps_fs * elephant[1])
+			for i in range(len(x_list)):
+				K = int(x_list[i] * 100)
 				y_list.append(
 					result.GetResult(
-						eps_g,       # GlobalEpsilon
-						N,           # NumberFirstPL
-						10,          # NumBlock
-						K,           # NumAtkPL
-						mice[0],     # mice_ratio
-						mscale,      # mice_scale
-						elephant[0], # elephant_ratio
-						escale,      # elephant_scale
-						attack_name, # attack method name
-						'mean',      # mean or std
+						GlobalEpsilon, NumberFirstPL, NumBlock, K,
+						mice[0], mice[1],
+						elephant[0], elephant[1],
+						attack_name, 'mean',
 					)
 				)
 			return y_list
 
-		mice: tuple = (75, self.scaling_factor*0.1)
-		elephant: tuple = (25, self.scaling_factor)
+		mice: tuple = (75, int(self.scaling_factor*0.1))
+		elephant: tuple = (25, int(self.scaling_factor))
 		y1_list: list = getresultlist('TTA', mice, elephant)
 		y2_list: list = getresultlist('SBFS', mice, elephant)
 		y3_list: list = getresultlist('TTA', mice, elephant, result=result_defense)
@@ -414,8 +409,8 @@ class Paintist:
 		axes[0].plot(x_list, y4_list, marker='v', linestyle='dotted',  color='black', label='SBFS (w/ Defense)')
 		axes[0].set_title("Mice 75%, Elephant 25%")
 
-		mice: tuple = (0, 100)
-		elephant: tuple = (100, 1000)
+		mice: tuple = (0, int(self.scaling_factor*0.1))
+		elephant: tuple = (100, int(self.scaling_factor))
 		y1_list: list = getresultlist('TTA', mice, elephant)
 		y2_list: list = getresultlist('SBFS', mice, elephant)
 		y3_list: list = getresultlist('TTA', mice, elephant, result=result_defense)
@@ -432,7 +427,7 @@ class Paintist:
 
 		for ax in axes:
 			ax.grid()
-		fig.supxlabel(r"\frac{K}{N}")
+		fig.supxlabel("K/N")
 		fig.supylabel("BCR") ## Budget Capture Ratio
 
 		handles, labels = axes[0].get_legend_handles_labels()
