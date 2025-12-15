@@ -297,20 +297,20 @@ class Paintist:
 		result = Result()
 		result.ReadCsvFile('../EVALUATION/evaluation_eps.csv')
 		fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
-		x_list: list[float] = [0.5, 1.0, 2.0, 3.0]
+		x_list: list[float] = [0.5, 0.75, 1.0, 2.0, 3.0]
 
-		NumberFirstPL = 100
+		GlobalEpsilon = 120 * self.scaling_factor
 		NumBlock = 10
-		K = 30
 
 		def getresultlist(attack_name: str, mice: tuple, elephant: tuple):
 			y_list = []
 			for eps_fs in x_list:
-				GlobalEpsilon = int(eps_fs * NumberFirstPL * 1000)
+				NumberFirstPL = int(GlobalEpsilon // eps_fs // self.scaling_factor)
 				mscale = int(eps_fs * mice[1])
 				escale = int(eps_fs * elephant[1])
+				K = int(NumberFirstPL * 0.1)
 				y_list.append(
-					self.result.GetResult(
+					result.GetResult(
 						GlobalEpsilon, NumberFirstPL, NumBlock, K,
 						mice[0], mscale,
 						elephant[0], escale,
@@ -445,5 +445,5 @@ if __name__ == '__main__':
 	# p.EvaluateK()
 	# p.EvaluateN()
 	# p.EvaluateM()
-	p.EvaluateEPS()
-	# p.EvaluateDefense()
+	# p.EvaluateEPS()
+	p.EvaluateDefense()

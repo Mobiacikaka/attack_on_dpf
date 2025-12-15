@@ -29,7 +29,7 @@ class DPFScheduler:
 			self.OnDataBlockCreation()
 
 		## Defense Flag
-		self.DefensiveFlag: bool = False
+		self.DefensiveFlag: bool = True
 
 	def OnDataBlockCreation(self) -> None:
 		self.GlobalBudget.append(self.GlobalEpsilon)
