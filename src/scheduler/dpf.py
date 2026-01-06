@@ -1,6 +1,7 @@
 from scheduler.pipeline import Pipeline
 
 import copy
+import config
 
 class DPFScheduler:
 	"""
@@ -29,7 +30,12 @@ class DPFScheduler:
 			self.OnDataBlockCreation()
 
 		## Defense Flag
-		self.DefensiveFlag: bool = False
+		if config._lambda == 0.0:
+			self.DefensiveFlag: bool = False
+			self.Lambda = 0.0
+		else:
+			self.DefensiveFlag: bool = True
+			self.Lambda = config._lambda
 
 	def OnDataBlockCreation(self) -> None:
 		self.GlobalBudget.append(self.GlobalEpsilon)
@@ -45,6 +51,7 @@ class DPFScheduler:
 		...
 		(time, Pipeline)
 		"""
+		assert(len(pl.DemandList) == self.NumBlock)
 		self.WaitingPipelineList[self.TimeSlot] = pl
 		pl.SetTimeSlot(self.TimeSlot)
 
@@ -67,13 +74,13 @@ class DPFScheduler:
 		demandratio.sort(reverse=True)
 		if self.DefensiveFlag == True:
 			## Linear
-			demandratio = [x * pl.GetTimeSlot() / self.NumberFirstPL for x in demandratio]
+			# demandratio = [x * pl.GetTimeSlot() / self.NumberFirstPL for x in demandratio]
 
 			## Exponential
-			# demandratio = [
-			# 	x * pow(0.5, self.TimeSlot - pl.GetTimeSlot())
-			# 	for x in demandratio
-			# ]
+			demandratio = [
+				x * pow(self.Lambda, self.TimeSlot - pl.GetTimeSlot())
+				for x in demandratio
+			]
 
 		return demandratio
 
