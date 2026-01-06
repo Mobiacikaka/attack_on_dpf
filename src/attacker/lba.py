@@ -10,7 +10,7 @@ def PrintThreshold(threshold):
 
 class Attacker(BasicAttacker):
 	"""
-	Lowest Budget Attack
+	Threshold Triggered Attack
 		Attack the DPF system with unfixed time slot
 			decides whether to attack in every time slot
 			chooses the time slot when budget exceeds a threshold
@@ -24,7 +24,6 @@ class Attacker(BasicAttacker):
 		super().__init__(NumAtkPL)
 		self.NumAtkPL = NumAtkPL
 		self.AtkPipelineList = []
-		PrintThreshold(self.THRESHOLD)
 
 	def SetThreshold(self, threshold: int) -> None:
 		self.THRESHOLD = threshold
