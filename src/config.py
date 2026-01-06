@@ -15,6 +15,7 @@ elephant_ratio = int(input())
 elephant_scale = int(input())
 
 times = int(input())
+_lambda = float(input())
 
 def PrintConfig():
 	print('GlobalEpsilon:', GlobalEpsilon)
@@ -23,3 +24,4 @@ def PrintConfig():
 	print('NumAtkPL:', NumAtkPL)
 	print(f'mice: {mice_ratio}%,{mice_scale}')
 	print(f'elephant: {elephant_ratio}%,{elephant_scale}')
+	print(f'lambda(0 for no defense): {_lambda}')
