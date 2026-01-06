@@ -6,6 +6,7 @@ from attacker.dsa import Attacker as DSAttacker
 from attacker.sbfs import Attacker as SBFSAttacker
 from attacker.naive import Attacker as NaiveAttacker
 from attacker.random import Attacker as RandomAttacker
+from attacker.tmp_attacker_1 import Attacker as TimeDecayAttacker
 from scheduler.dpf import DPFScheduler
 import numpy
 
@@ -36,6 +37,8 @@ def main(
 	result_list_2 = []
 	result_list_3 = []
 	result_list_4 = []
+
+	result_list_tmp = []
 
 	for _ in range(config.times):
 		simulator.GeneratePipelineList(
@@ -90,6 +93,7 @@ def main(
 	print("Random:", numpy.mean(result_list_4), numpy.std(result_list_4))
 
 if __name__ == '__main__':
+	numpy.random.seed(0)
 	main(
 		config.GlobalEpsilon,
 		config.NumberFirstPL,
