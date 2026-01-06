@@ -1,7 +1,7 @@
-import random
 from scheduler.dpf import DPFScheduler
 from attacker.attacker import BasicAttacker
 from scheduler.pipeline import Pipeline
+import numpy
 import config
 
 class Attacker(BasicAttacker):
@@ -20,7 +20,7 @@ class Attacker(BasicAttacker):
 		self.RegularPipelineList = PipelineList
 
 	def GenerateAtkTimeslotList(self):
-		self.AtkTimeslotList = random.sample(list(range(config.NumberFirstPL)), self.NumAtkPL)
+		self.AtkTimeslotList: list = numpy.random.choice(list(range(config.NumberFirstPL)), self.NumAtkPL).tolist()
 		self.AtkTimeslotList.sort()
 
 	def AttackScheduler(self, scheduler: DPFScheduler) -> None | Pipeline:
