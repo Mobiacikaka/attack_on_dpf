@@ -1,9 +1,8 @@
-import random
 from scheduler.dpf import DPFScheduler
 from scheduler.pipeline import Pipeline
 from attacker.attacker import BasicAttacker
 
-import numpy
+import numpy, time
 
 class Simulator:
 	def __init__(
@@ -22,6 +21,7 @@ class Simulator:
 		self.NumAtkPL: int = NumAtkPL
 		self.verbose: bool = verbose
 		self.AttackerClass: type[BasicAttacker] = BasicAttacker
+		self.Runtime = 0.0
 
 	def SetAttacker(self, attacker: BasicAttacker) -> None:
 		self.attacker = attacker
@@ -93,7 +93,7 @@ class Simulator:
 
 		for i in range(total_n_pls):
 			remain_pls = total_n_pls - i
-			rnd = random.randrange(0, remain_pls)
+			rnd = numpy.random.randint(0, remain_pls)
 			eps_total = 0
 
 			if rnd < n_mice:
@@ -117,6 +117,8 @@ class Simulator:
 		self.PipelineList = pls
 
 	def StartSimulation(self) -> None:
+		start_time = time.time()
+
 		if self.PipelineList == []:
 			self.GeneratePipelineList()
 		scheduler: DPFScheduler = DPFScheduler(self.GlobalEpsilon, self.NumberFirstPL, self.NumBlock)
@@ -159,6 +161,9 @@ class Simulator:
 		self.attacker = attacker
 		self.FinishedPipelineList = FinishedPipelineList
 
+		end_time = time.time()
+		self.Runtime = end_time - start_time
+
 	def GetSimulationResult(self) -> float:
 		attacker_budget_sum = self.attacker.CalculateGainedBudget(self.FinishedPipelineList)
 		## budget fraction
@@ -167,3 +172,6 @@ class Simulator:
 
 	def GetRegularPipelineList(self) -> list:
 		return self.PipelineList
+
+	def GetRuntime(self):
+		return self.Runtime
