@@ -38,7 +38,11 @@ def main(
 	result_list_3 = []
 	result_list_4 = []
 
-	result_list_tmp = []
+	runtime_list_0 = []
+	runtime_list_1 = []
+	runtime_list_2 = []
+	runtime_list_3 = []
+	runtime_list_4 = []
 
 	for _ in range(config.times):
 		simulator.GeneratePipelineList(
@@ -61,6 +65,7 @@ def main(
 		simulator.SetAttacker(attacker)
 		simulator.StartSimulation()
 		result_list_1.append(simulator.GetSimulationResult())
+		runtime_list_1.append(simulator.GetRuntime())
 
 		if verbose == True:
 			print("\n##### Segmented Brute-Force #####")
@@ -69,6 +74,7 @@ def main(
 		simulator.SetAttacker(attacker)
 		simulator.StartSimulation()
 		result_list_2.append(simulator.GetSimulationResult())
+		runtime_list_2.append(simulator.GetRuntime())
 
 		if verbose == True:
 			print("\n##### Naive Greedy #####")
@@ -77,6 +83,7 @@ def main(
 		simulator.SetAttacker(attacker)
 		simulator.StartSimulation()
 		result_list_3.append(simulator.GetSimulationResult())
+		runtime_list_3.append(simulator.GetRuntime())
 
 		if verbose == True:
 			print("\n##### Naive Greedy #####")
@@ -85,12 +92,34 @@ def main(
 		simulator.SetAttacker(attacker)
 		simulator.StartSimulation()
 		result_list_4.append(simulator.GetSimulationResult())
+		runtime_list_4.append(simulator.GetRuntime())
 
 	# print("Sequential Heuristic:", numpy.mean(result_list_0), numpy.std(result_list_0))
-	print("Threshold-Triggered(Aggr+D-Thr):", numpy.mean(result_list_1), numpy.std(result_list_1))
-	print("Segmented Brute Force:", numpy.mean(result_list_2), numpy.std(result_list_2))
-	print("Naive Greedy:", numpy.mean(result_list_3), numpy.std(result_list_3))
-	print("Random:", numpy.mean(result_list_4), numpy.std(result_list_4))
+	if True:
+		print(
+			"Threshold-Triggered(Aggr+D-Thr):",
+			numpy.mean(result_list_1),
+			numpy.std(result_list_1),
+			numpy.mean(runtime_list_1)
+		)
+		print(
+			"Segmented Brute Force:",
+			numpy.mean(result_list_2),
+			numpy.std(result_list_2),
+			numpy.mean(runtime_list_2)
+		)
+		print(
+			"Naive Greedy:",
+			numpy.mean(result_list_3),
+			numpy.std(result_list_3),
+			numpy.mean(runtime_list_3)
+		)
+		print(
+			"Random:",
+			numpy.mean(result_list_4),
+			numpy.std(result_list_4),
+			numpy.mean(runtime_list_4)
+		)
 
 if __name__ == '__main__':
 	numpy.random.seed(0)
