@@ -1,14 +1,13 @@
-import subprocess
+import subprocess, numpy
 
 def getresult(target_attack: str, lines: list[str]):
 	for i in range(len(lines)):
 		if target_attack in lines[i]:
 			result = lines[i].split(":")[1]
-			mean = result.split(" ")[1]
-			std = result.split(" ")[2]
-			return mean, std
+			result_line = result.split(" ")[1:]
+			return result_line
 	assert(0)
-	return "", ""
+	return ["", "", ""]
 
 def ensure_clean():
 	dirty = subprocess.check_output(
@@ -24,7 +23,8 @@ def run():
 			int(step * NumberFirstPL * scaling_factor),
 			NumberFirstPL,
 			NumBlock,
-			int(K_ratio * NumberFirstPL), ## Number of AtkPipeline
+			# int(K_ratio * NumberFirstPL), ## Number of AtkPipeline
+			K,
 			mice_ratio,
 			int(mice_scale * step * scaling_factor),
 			elephant_ratio,
@@ -34,17 +34,18 @@ def run():
 		)
 		# for NumberFirstPL, step in [(50, 2), (100, 1), (200, 0.5), (400, 0.25)]
 		for step in [1.0]
-		for NumBlock in [10]# range(5, 31, 5)
-		for NumberFirstPL in [100]# range(50, 251, 50)
-		for K_ratio in [0.1, 0.2, 0.3, 0.4, 0.5]
+		for NumBlock in range(5, 31, 5)
+		for NumberFirstPL in range(50, 251, 50)
+		# for K_ratio in [0.1, 0.2, 0.3, 0.4, 0.5]
+		for K in [10, 20, 30, 40, 50]
 		for mice_scale in [0.1]
 		for elephant_scale in [1.0]
 		for mice_ratio, elephant_ratio in [(75, 25), (0, 100)]
 		for times in [100]
-		for _lambda in [0.1, 0.3, 0.5, 0.7, 0.9, 1.0]
+		for _lambda in [1.0]# [0.5, 0.7] + numpy.arange(0.9, 1.01, 0.01).tolist()
 	]
 
-	outputfile = open("../EVALUATION/evaluation_defense.csv", "w")
+	outputfile = open("../EVALUATION/evaluation_runtime.csv", "w")
 	column_list = [
 		"GlobalEpsilon,"
 		,"NumberFirstPL,"
@@ -57,12 +58,16 @@ def run():
 		,"lambda,"
 		,"TTA mean,"
 		,"TTA std,"
+		,"TTA time,"
 		,"SBFS mean,"
 		,"SBFS std,"
+		,"SBFS time,"
 		,"Naive mean,"
 		,"Naive std,"
+		,"Naive time,"
 		,"Random mean,"
-		,"Random std"
+		,"Random std,"
+		,"Random time,"
 	]
 	header = ""
 	for column_name in column_list:
@@ -74,7 +79,7 @@ def run():
 		for par in arg:
 			input_str = input_str + f"{par}\n"
 
-		print(f"Running {i} args")
+		print(f"Running {i}/{len(args)} args")
 		i += 1
 		print(input_str)
 
@@ -83,10 +88,10 @@ def run():
 			["python", "main.py"], input=input_str, capture_output=True, text=True,
 		)
 		# result = result.stdout.split("\n")[-2].split(" ")[1]
-		result_1: tuple[str, str] = getresult("Threshold", output.stdout.split("\n"))
-		result_2: tuple[str, str] = getresult("Segmented", output.stdout.split("\n"))
-		result_3: tuple[str, str] = getresult("Naive", output.stdout.split("\n"))
-		result_4: tuple[str, str] = getresult("Random", output.stdout.split("\n"))
+		method_names = ["Threshold", "Segmented", "Naive", "Random"]
+		result_list: list[list] = []
+		for j in range(len(method_names)):
+			result_list.append(getresult(method_names[j], output.stdout.split("\n")))
 		GlobalEpsilon, NumberFirstPL, NumBlock, NumAtkPL, mice_ratio, mice_scale, elephant_ratio, elephant_scale, times, _lambda = arg
 		outputfile.write(f"{GlobalEpsilon},")
 		outputfile.write(f"{NumberFirstPL},")
@@ -97,12 +102,8 @@ def run():
 		outputfile.write(f"{elephant_ratio},")
 		outputfile.write(f"{elephant_scale},")
 		outputfile.write(f"{_lambda},")
-		outputfile.write(f"{result_1[0]},")
-		outputfile.write(f"{result_1[1]},")
-		outputfile.write(f"{result_2[0]},")
-		outputfile.write(f"{result_2[1]},")
-		outputfile.write(f"{result_3[0]},")
-		outputfile.write(f"{result_3[1]},")
-		outputfile.write(f"{result_4[0]},")
-		outputfile.write(f"{result_4[1]}\n")
+		for result in result_list:
+			for item in result:
+				outputfile.write(f"{item},")
+		outputfile.write("\n")
 	outputfile.close()
