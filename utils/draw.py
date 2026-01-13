@@ -64,8 +64,8 @@ class Result:
 
 class Paintist:
 	def __init__(self) -> None:
-		self.saveflag = True
-		self.showflag = False
+		self.saveflag = bool(0)
+		self.showflag = bool(1)
 		self.scaling_factor = 1000
 
 	def GetResultList(self, attack_name: str, metric_name: str, args: list, result: Result):
@@ -619,7 +619,7 @@ class Paintist:
 		plt.xlim()
 
 		for ax in axes:
-			ax.set_yscale('log')
+			# ax.set_yscale('log')
 			ax.grid()
 		fig.supxlabel("K")
 		fig.supylabel("time (s)") ## Budget Capture Ratio
@@ -695,7 +695,7 @@ class Paintist:
 		plt.xlim()
 
 		for ax in axes:
-			ax.set_yscale('log')
+			# ax.set_yscale('log')
 			ax.grid()
 		fig.supxlabel("N")
 		fig.supylabel("time (s)") ## Budget Capture Ratio
@@ -771,7 +771,7 @@ class Paintist:
 		plt.xlim()
 
 		for ax in axes:
-			ax.set_yscale('log')
+			# ax.set_yscale('log')
 			ax.grid()
 		fig.supxlabel("M")
 		fig.supylabel("time (s)") ## Budget Capture Ratio
@@ -798,6 +798,6 @@ if __name__ == '__main__':
 	# p.EvaluateEPS()
 	# p.EvaluateDefense()
 	# p.EvaluateLambda()
-	# p.EvaluateRuntimeK()
-	# p.EvaluateRuntimeN()
+	p.EvaluateRuntimeK()
+	p.EvaluateRuntimeN()
 	p.EvaluateRuntimeM()

@@ -23,8 +23,8 @@ def run():
 			int(step * NumberFirstPL * scaling_factor),
 			NumberFirstPL,
 			NumBlock,
-			# int(K_ratio * NumberFirstPL), ## Number of AtkPipeline
-			K,
+			int(K_ratio * NumberFirstPL), ## Number of AtkPipeline
+			# K,
 			mice_ratio,
 			int(mice_scale * step * scaling_factor),
 			elephant_ratio,
@@ -33,11 +33,11 @@ def run():
 			_lambda
 		)
 		# for NumberFirstPL, step in [(50, 2), (100, 1), (200, 0.5), (400, 0.25)]
-		for step in [1.0]
+		for step in [0.5, 0.75, 1.0, 2.0, 3.0]
 		for NumBlock in range(5, 31, 5)
 		for NumberFirstPL in range(50, 251, 50)
-		# for K_ratio in [0.1, 0.2, 0.3, 0.4, 0.5]
-		for K in [10, 20, 30, 40, 50]
+		for K_ratio in [0.1, 0.2, 0.3, 0.4, 0.5]
+		# for K in [10, 20, 30, 40, 50]
 		for mice_scale in [0.1]
 		for elephant_scale in [1.0]
 		for mice_ratio, elephant_ratio in [(75, 25), (0, 100)]
