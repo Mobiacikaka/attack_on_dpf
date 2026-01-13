@@ -45,7 +45,7 @@ def run():
 		for _lambda in [1.0]# [0.5, 0.7] + numpy.arange(0.9, 1.01, 0.01).tolist()
 	]
 
-	outputfile = open("../EVALUATION/evaluation_runtime.csv", "w")
+	outputfile = open("../EVALUATION/evaluation.csv", "w")
 	column_list = [
 		"GlobalEpsilon,"
 		,"NumberFirstPL,"

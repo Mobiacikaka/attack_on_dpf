@@ -1,0 +1,18 @@
+<!-- vim: set ft=markdown: -->
+
+## Run the script
+
+```
+cd src && python -c "import run; run.run()"
+```
+
+## Result
+
+First you need to create EVALUATION folder outside src folder.
+After you run the script, the results should be in the csv file in EVALUATION folder.
+
+## Parameter
+
+You can change the parameters you want to evaluate in src/run.py
+
+
